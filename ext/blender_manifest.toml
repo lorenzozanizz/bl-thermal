@@ -1,0 +1,13 @@
+schema_version = "1.0.0"
+id = "bl_thermal"
+version = "1.0.0"
+name = "Thermal Imaging Backend"
+tagline = "Physics-based thermal simulation and rendering for synthetic data"
+maintainer = "bl-thermal"
+type = "add-on"
+tags = ["Render", "Physics"]
+blender_version_min = "4.5.0"
+license = ["SPDX:GPL-3.0-or-later"]
+
+[permissions]
+files = "Write thermal EXR/PNG render outputs to the chosen directory"
