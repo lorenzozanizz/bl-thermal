@@ -20,6 +20,21 @@ bl_info = {
 import sys
 
 
+# Do not register the BPY module if we are testing
+if sys.modules['pytest'] is  None:
+
+    from .thermal_core import properties as simulation_properties
+    from .ui import properties as data_properties
+
+    registration_classes = (
+    )
+
+    # Construct a dictionary with all properties declarations across all modules
+    properties = {}
+    for properties_set in ():
+        pass
+
+
 def register():
     """ Register the classes and properties for the GUI extension
     """
@@ -50,16 +65,3 @@ def unregister():
 
     # UniqueLogger.cleanup()
     # unregister_handlers()
-
-
-# Do not register the BPY module if we are testing
-if sys.modules['pytest'] is  None:
-    register()
-
-    registration_classes = (
-    )
-
-    # Construct a dictionary with all properties declarations across all modules
-    properties = {}
-    for properties_set in ():
-        pass

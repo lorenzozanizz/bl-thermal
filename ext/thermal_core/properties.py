@@ -5,3 +5,8 @@ from bpy.props import PointerProperty, StringProperty, BoolProperty, IntProperty
 class SceneIgnoreRules(PropertyGroup):
     """ """
     pass
+
+
+simulation_properties = {
+
+}

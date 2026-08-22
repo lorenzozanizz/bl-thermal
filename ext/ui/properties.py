@@ -8,3 +8,8 @@ class SceneIgnoreRules(PropertyGroup):
 
 class ThermalProperties(PropertyGroup):
     pass
+
+
+data_properties = {
+
+}
