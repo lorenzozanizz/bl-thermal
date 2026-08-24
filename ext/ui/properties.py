@@ -5,9 +5,12 @@ class SceneIgnoreRules(PropertyGroup):
     """ """
     pass
 
-
 class ThermalProperties(PropertyGroup):
     pass
+
+class InitStrategyProperties(PropertyGroup):
+    pass
+
 
 
 data_properties = {
