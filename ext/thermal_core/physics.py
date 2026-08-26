@@ -1,3 +1,10 @@
+"""
+
+
+
+"""
+
+
 import numpy as np
 
 # Namespace class
