@@ -26,13 +26,16 @@ if sys.modules['pytest'] is  None:
     from .thermal_core import properties as simulation_properties
     from .ui import properties as data_properties
 
+    from .ui import classes as ui_classes
+
     registration_classes = (
+        *ui_classes
     )
 
     # Construct a dictionary with all properties declarations across all modules
     properties = {}
-    for properties_set in ():
-        pass
+    for properties_set in (simulation_properties, data_properties):
+        properties.update(properties_set)
 
 
 def register():

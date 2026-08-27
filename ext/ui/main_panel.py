@@ -1,5 +1,7 @@
 from abc import abstractmethod, ABCMeta
 
+from bpy.types import Panel
+
 
 class UISection(metaclass=ABCMeta):
     pass
@@ -24,4 +26,12 @@ class RenderSection(UISection):
 
 
 class CentralPanel(UISection):
+    pass
+
+
+
+class MainPanel(Panel):
+    pass
+
+class InfoPanel(Panel):
     pass

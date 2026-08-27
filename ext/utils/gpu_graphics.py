@@ -27,3 +27,4 @@ def draw_outline(color: Union[str, tuple] = "yellow"):
 
     color = resolve_color(color)
     pass
+
