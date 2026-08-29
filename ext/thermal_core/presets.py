@@ -2,8 +2,6 @@
 
 """
 
-
-
 from collections.abc import Collection
 
 
