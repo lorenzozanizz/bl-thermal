@@ -21,7 +21,7 @@ import sys
 
 
 # Do not register the BPY module if we are testing
-if sys.modules['pytest'] is  None:
+if 'pytest' not in sys.modules:
 
     from .thermal_core import properties as simulation_properties
     from .ui import properties as data_properties
@@ -29,7 +29,7 @@ if sys.modules['pytest'] is  None:
     from .ui import classes as ui_classes
 
     registration_classes = (
-        *ui_classes
+        *ui_classes,
     )
 
     # Construct a dictionary with all properties declarations across all modules
