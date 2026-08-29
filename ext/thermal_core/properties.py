@@ -16,6 +16,6 @@ class SceneSettings(PropertyGroup):
 
     """
 
-simulation_properties = {
+simulation_properties = (
 
-}
+)

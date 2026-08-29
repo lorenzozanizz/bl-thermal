@@ -32,10 +32,11 @@ if 'pytest' not in sys.modules:
         *ui_classes,
     )
 
-    # Construct a dictionary with all properties declarations across all modules
-    properties = {}
-    for properties_set in (simulation_properties, data_properties):
-        properties.update(properties_set)
+    # Flatten all PropertyRegistration declarations across modules
+    properties = (
+        *simulation_properties,
+        *data_properties
+    )
 
 
 def register():
@@ -46,9 +47,10 @@ def register():
         # bpy.utils.register_class(cls)
         pass
 
-    # Define all the attributes for the GUI
-    for prop_name, prop_value in properties.items():
-        # setattr(bpy.types.Scene, prop_name, prop_value)
+    # Define all the attributes for the GUI, each on its declared owner
+    # (bpy.types.Object, bpy.types.Collection, bpy.types.Scene, ...)
+    for reg in properties:
+        # setattr(reg.owner, reg.name, reg.value)
         pass
 
 
@@ -57,8 +59,8 @@ def unregister():
     """
 
     # Delete all registered properties in the environment
-    for prop in properties:
-        # delattr(bpy.types.Scene, prop)
+    for reg in properties:
+        # delattr(reg.owner, reg.name)
         pass
 
     # Unregister all previously registered classes

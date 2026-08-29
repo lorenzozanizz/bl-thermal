@@ -17,15 +17,16 @@ class ObjectTempInitType(Enum):
     mesh Object, so it can never be used as a Collection-level default.
     """
 
-    # Strategies that require per-object data and cannot be a
-    # Collection-level default.
-    _OBJECT_ONLY = frozenset({ObjectTempInitType.WEIGHT_PAINTED})
-
     GRADIENT = "Gradient"
     UNIFORM = "Uniform"
     AMBIENT = "Ambient"
     WEIGHT_PAINTED = "Weight Painted"
     INHERIT = "Inherit"
+
+    # Strategies that require per-object data and cannot be a
+    # Collection-level default.
+    _OBJECT_ONLY = frozenset({WEIGHT_PAINTED})
+
 
     @classmethod
     def allowed_for_scope(cls, scope: SpecScope) -> tuple["ObjectTempInitType", ...]:
@@ -33,7 +34,7 @@ class ObjectTempInitType(Enum):
         if scope is SpecScope.OBJECT:
             return tuple(cls)
         if scope is SpecScope.COLLECTION:
-            return tuple(m for m in cls if m not in _OBJECT_ONLY)
+            return tuple(m for m in cls if m not in ObjectTempInitType._OBJECT_ONLY)
         raise ValueError(f"Unknown scope: {scope}")
 
 class ObjectTempEvolution(Enum):
