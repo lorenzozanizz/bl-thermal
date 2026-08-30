@@ -1,0 +1,142 @@
+"""
+Resolves an Object's *effective* temperature-init spec by walking the
+inheritance chain, and is simultaneously the conversion boundary: bpy
+PropertyGroup state goes in, a pure thermal_core.specs dataclass comes out.
+No bpy state should cross into thermal_core beyond this function - baking
+code should only ever see the result of resolve_object_spec(), never touch
+`obj.thermal_init` directly.
+
+Chain walked for an object set to INHERIT:
+    Object (if not INHERIT)
+      -> Object's Collection(s) (if not INHERIT)
+        -> Scene default (not yet implemented - see module note below)
+
+Lives in `ui/`, not `thermal_core/`, for the same reason strategy_registry.py
+does: it touches bpy.types.Object/Collection directly. thermal_core stays
+bpy-free.
+
+Scene-level fallback: thermal_core/properties.py's simulation_properties is
+still empty - there is no Scene-level thermal_init yet. Rather than invent
+one here, exhausting the Collection chain without a concrete answer is
+currently a resolution failure (UnresolvedSpecError). Adding a Scene default
+later is a one-function insertion (`_resolve_via_scene`) right before that
+raise, once Scene support is designed.
+"""
+
+from typing import List, Tuple
+
+from bpy.types import Object, Collection
+
+from ..thermal_core.contracts import ObjectTempInitType, SpecScope
+from ..thermal_core.specs import TempInitSpec
+from .init_registry import InitStrategyRegistry
+
+
+class SpecResolutionError(Exception):
+    """ Base class for errors raised while resolving an object's effective temperature-init
+    spec. """
+
+
+class UnresolvedSpecError(SpecResolutionError):
+    """ Raised when an object (transitively) resolves to INHERIT but no
+    containing collection provides a concrete default.
+    """
+
+
+class AmbiguousInheritanceError(SpecResolutionError):
+    """ Raised when an object belongs to multiple collections whose concrete
+    specs disagree, so INHERIT has no single well-defined answer. Deliberately not resolved
+    by picking one arbitrarily.
+    """
+
+    def __init__(self, obj: Object, candidates: List[Tuple[Collection, TempInitSpec]]):
+        self.obj = obj
+        self.candidates = candidates
+        detail = ", ".join(f"{coll.name!r} -> {spec}" for coll, spec in candidates)
+        super().__init__(
+            f"{obj.name!r} is set to Inherit but belongs to multiple collections with disagreeing specs: "
+            f"{detail}. Set an explicit strategy on the object, or make the collections agree."
+        )
+
+
+class InvalidCollectionSpecError(SpecResolutionError):
+    """ Raised when a Collection's stored init_type isn't legal at
+    Collection scope.
+    This shouldn't happen through the UI but can happen via a script or manual
+    ID-property editing. Raised immediately to highlight the issue.
+    """
+
+    def __init__(self, collection: Collection, init_type: ObjectTempInitType):
+        self.collection = collection
+        self.init_type = init_type
+        super().__init__(
+            f"Collection {collection.name!r} has init_type={init_type.value!r} "
+            f"stored, but that strategy isn't valid at Collection scope."
+        )
+
+
+class SpecsResolver:
+
+    @staticmethod
+    def _build_spec_for(props_owner, init_type: ObjectTempInitType) -> TempInitSpec:
+        """ Look up the strategy descriptor for init_type and build a spec
+        from the matching sub-PropertyGroup on props_owner.thermal_init.
+
+        :param props_owner: The object which owns the properties
+        :param init_type: The type of initializer for the object
+        """
+        descriptor = InitStrategyRegistry.get_strategy(init_type)
+        # raises NotImplementedError for GRADIENT/AMBIENT
+        sub_props = getattr(props_owner.thermal_init, descriptor.attr_name)
+        return descriptor.build(sub_props)
+
+    @staticmethod
+    def _candidate_specs_from_collections(obj: Object) -> List[Tuple[Collection, TempInitSpec]]:
+        """ Gather a (Collection, TempInitSpec) pair for every collection `obj`
+        belongs to that itself resolves to a concrete (non-INHERIT) strategy.
+        Collections set to INHERIT themselves are skipped (nothing to offer).
+        """
+        candidates: List[Tuple[Collection, TempInitSpec]] = []
+        for collection in obj.users_collection:
+            coll_init_type = ObjectTempInitType[collection.thermal_init.init_type]
+            if coll_init_type is ObjectTempInitType.INHERIT:
+                continue
+            if coll_init_type not in ObjectTempInitType.allowed_for_scope(SpecScope.COLLECTION):
+                raise InvalidCollectionSpecError(collection, coll_init_type)
+            candidates.append((collection, SpecsResolver._build_spec_for(collection, coll_init_type)))
+        return candidates
+
+    @staticmethod
+    def resolve_object_spec(obj: Object) -> TempInitSpec:
+        """ Resolve `obj`'s effective temperature-init spec.
+
+        This is the single conversion boundary between bpy state and
+        thermal_core: everything downstream (baking) should call this instead
+        of reading `obj.thermal_init` directly.
+
+        :raises UnresolvedSpecError: INHERIT with no concrete collection default.
+        :raises AmbiguousInheritanceError: multiple collections disagree.
+        :raises InvalidCollectionSpecError: a collection stores an
+            object-only strategy (e.g. legacy WEIGHT_PAINTED data).
+        :raises NotImplementedError: the resolved strategy has no
+            StrategyDescriptor yet (e.g. GRADIENT, AMBIENT).
+        """
+        obj_init_type = ObjectTempInitType[obj.thermal_init.init_type]
+
+        if obj_init_type is not ObjectTempInitType.INHERIT:
+            return SpecsResolver._build_spec_for(obj, obj_init_type)
+
+        candidates = SpecsResolver._candidate_specs_from_collections(obj)
+
+        if not candidates:
+            raise UnresolvedSpecError(
+                f"{obj.name!r} is set to Inherit, but no containing collection "
+                f"provides a concrete default."
+            )
+
+        first_spec = candidates[0][1]
+        if any(spec != first_spec for _, spec in candidates[1:]):
+            raise AmbiguousInheritanceError(obj, candidates)
+
+        return first_spec
+
