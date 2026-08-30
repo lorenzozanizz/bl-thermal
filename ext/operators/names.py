@@ -19,10 +19,17 @@ class Labels(Enum):
     extensions. To access an operator's use Labels.NAME.value
     """
 
-    # ------------- Names inside EMPTY ---------------
-    # |
-
     # ------------- Default namespace names ---------------
     # |
     # ( Default operator to open a URL.  )
     OPEN_URL                = "wm.url_open"
+
+    # ------------- Names inside "thermal" (baking family) ---------------
+    # |
+    # ( Resolves each mesh object's TempInitSpec and bakes it into
+    #   a per-vertex float mesh attribute. )
+    BAKE_TEMPERATURE        = "thermal.bake_temperature"
+    # ( Reserved for the future modal diffusion operator not yet implemented )
+    DIFFUSE_TEMPERATURE_     = "thermal.diffuse_temperature"
+    # ( Reserved for the future time-evolution operator, not yet implemented )
+    EVOLVE_TEMPERATURE_      = "thermal.evolve_temperature"

@@ -4,3 +4,10 @@ TARGET_VERSION = "4.5.0"
 
 REPO_URL = "https://github.com/lorenzozanizz/bl-thermal"
 DOCU_URL = "https://github.com/lorenzozanizz/bl-thermal"
+
+
+# ( Single source of truth for the per-vertex float temperature field. Kept here
+# to be accessible to both UI and backend
+TEMPERATURE_ATTR_NAME = "thermal_temperature_k"
+TEMPERATURE_ATTR_TYPE = 'FLOAT'
+TEMPERATURE_ATTR_DOMAIN = 'POINT'
