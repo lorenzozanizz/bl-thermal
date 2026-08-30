@@ -8,9 +8,9 @@ class TempUnit(Enum):
     """ Display unit a user may enter/see temperatures in.
     Internal storage is always Kelvin, see module docstring.
     """
-    KELVIN = "K"
-    CELSIUS = "C"
-    FAHRENHEIT = "F"
+    KELVIN = "Kelvin"
+    CELSIUS = "Celsius"
+    FAHRENHEIT = "Fahrenheit"
 
 class Conversions:
     """
