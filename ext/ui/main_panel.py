@@ -8,6 +8,8 @@ from typing import Callable, Iterable, Optional
 
 from bpy.types import Panel, Context, ID, Object, Collection
 
+from ..operators.names import Labels
+from ..constants import *
 from ..thermal_core.contracts import ObjectTempInitType, SpecScope
 from .init_registry import InitStrategyRegistry
 
@@ -94,7 +96,7 @@ class MainPanel(Panel):
     bl_label = "Thermal"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = "Randomizer"
+    bl_category = MAIN_PANEL_NAME
 
     def draw(self, context: Context) -> None:
         panel = CentralPanel(sections=[
@@ -121,4 +123,35 @@ class CollectionSpecPanel(Panel):
 
 
 class InfoPanel(Panel):
-    pass
+
+    bl_idname = "THERMAL_PT_info"
+    bl_label = "Info"
+    bl_category = MAIN_PANEL_NAME
+    bl_options = { 'DEFAULT_CLOSED' }
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_order = 4
+
+    def draw(self, context):
+
+        layout = self.layout
+
+        # Title
+        col = layout.column(align=True)
+        col.label(text=MAIN_PANEL_NAME, icon='INFO')
+        col.separator()
+
+        # Version Info
+        col.label(text=f"Version: {VERSION}")
+        col.label(text=f"Tested on Blender {TARGET_VERSION}")
+        col.separator()
+
+        # Links section
+        col = layout.column(align=True)
+        col.label(text="Links:")
+
+        row = col.row()
+        op = row.operator(Labels.OPEN_URL.value, text="GitHub", icon='URL')
+        op.url = REPO_URL
+        op = row.operator(Labels.OPEN_URL.value, text="Documentation", icon='FILE_FOLDER')
+        op.url = DOCU_URL
