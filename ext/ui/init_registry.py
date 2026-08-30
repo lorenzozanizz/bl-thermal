@@ -30,7 +30,7 @@ from abc import ABC, abstractmethod
 
 from bpy.types import PropertyGroup, UILayout
 
-from ..thermal_core.contracts import ObjectTempInitType, SpecScope
+from ..thermal_core.contracts import InitType, SpecScope
 from ..thermal_core.specs import TempInitSpec, UniformTempSpec, WeightPaintedTempSpec
 from ..thermal_core.temperature import TempUnit, Conversions
 from .properties import UniformTempProperties, WeightPaintedTempProperties
@@ -44,7 +44,7 @@ class StrategyDescriptor(ABC):
         strategy's parameters.
     :param attr_name: attribute name on InitStrategyProperties
     """
-    init_type: ObjectTempInitType
+    init_type: InitType
     property_group: Type[PropertyGroup]
     attr_name: str
 
@@ -64,9 +64,9 @@ class InitStrategyRegistry:
     _REGISTRY = {}
 
     @staticmethod
-    def get_strategy(init_type: ObjectTempInitType) -> StrategyDescriptor:
+    def get_strategy(init_type: InitType) -> StrategyDescriptor:
         """ Look up the descriptor for a strategy.  """
-        if init_type is ObjectTempInitType.INHERIT:
+        if init_type is InitType.INHERIT:
             raise ValueError(
                 "INHERIT has no StrategyDescriptor of its own it must be "
                 "resolved to a concrete strategy first."
@@ -89,25 +89,25 @@ class InitStrategyRegistry:
 
         :param scope: the scope to look up the strategies for.
         """
-        allowed = set(ObjectTempInitType.allowed_for_scope(scope))
+        allowed = set(InitType.allowed_for_scope(scope))
         return tuple(
             descriptor for init_type, descriptor in InitStrategyRegistry._REGISTRY.items()
             if init_type in allowed
         )
 
     @classmethod
-    def register(cls, init_type: ObjectTempInitType):
+    def register(cls, init_type: InitType):
         def decorator(drawer_cls):
             cls._REGISTRY[init_type] = drawer_cls
             return drawer_cls
         return decorator
 
 
-@InitStrategyRegistry.register(init_type=ObjectTempInitType.UNIFORM)
+@InitStrategyRegistry.register(init_type=InitType.UNIFORM)
 class InitWeightUniform(StrategyDescriptor):
 
     # Initialize the dataclass attribute
-    init_type = ObjectTempInitType.UNIFORM
+    init_type = InitType.UNIFORM
     property_group = UniformTempProperties
     attr_name = "uniform"
 
@@ -122,10 +122,10 @@ class InitWeightUniform(StrategyDescriptor):
         return UniformTempSpec(value_k=Conversions.to_kelvin(props.value, unit))
 
 
-@InitStrategyRegistry.register(init_type=ObjectTempInitType.WEIGHT_PAINTED)
+@InitStrategyRegistry.register(init_type=InitType.WEIGHT_PAINTED)
 class InitWeightPainted(StrategyDescriptor):
 
-    init_type = ObjectTempInitType.WEIGHT_PAINTED
+    init_type = InitType.WEIGHT_PAINTED
     property_group = WeightPaintedTempProperties,
     attr_name = "weight_painted",
 

@@ -20,7 +20,7 @@ from bpy.props import (
     PointerProperty, StringProperty, FloatProperty, EnumProperty,
 )
 
-from ..thermal_core.contracts import ObjectTempInitType, SpecScope
+from ..thermal_core.contracts import InitType, SpecScope
 from ..thermal_core.temperature import TempUnit
 from ..registration import PropertyRegistration
 
@@ -89,7 +89,7 @@ class WeightPaintedTempProperties(PropertyGroup):
 def _init_type_items(self, _):
     """ Determines scope (Object vs Collection) """
     scope = SpecScope.COLLECTION if isinstance(self.id_data, Collection) else SpecScope.OBJECT
-    return [(m.name, m.value, "") for m in ObjectTempInitType.allowed_for_scope(scope)]
+    return [(m.name, m.value, "") for m in InitType.allowed_for_scope(scope)]
 
 
 class InitStrategyProperties(PropertyGroup):

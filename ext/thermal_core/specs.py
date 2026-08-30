@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
 from .temperature import Conversions
-from .contracts import ObjectTempInitType
+from .contracts import InitType
 
 
 @dataclass(frozen=True)
@@ -23,7 +23,7 @@ class TempInitSpec(ABC):
 
     @property
     @abstractmethod
-    def init_type(self) -> ObjectTempInitType:
+    def init_type(self) -> InitType:
         """ The ObjectTempInitType this spec implements. """
         raise NotImplementedError
 
@@ -40,8 +40,8 @@ class UniformTempSpec(TempInitSpec):
     value_k: float
 
     @property
-    def init_type(self) -> ObjectTempInitType:
-        return ObjectTempInitType.UNIFORM
+    def init_type(self) -> InitType:
+        return InitType.UNIFORM
 
     def validate(self) -> None:
         if not Conversions.is_physically_valid_kelvin(self.value_k):
@@ -59,8 +59,8 @@ class WeightPaintedTempSpec(TempInitSpec):
     falloff: str = "LINEAR"  # matches a future Blender CurveMapping/enum choice
 
     @property
-    def init_type(self) -> ObjectTempInitType:
-        return ObjectTempInitType.WEIGHT_PAINTED
+    def init_type(self) -> InitType:
+        return InitType.WEIGHT_PAINTED
 
     def validate(self) -> None:
         if not self.vertex_group:

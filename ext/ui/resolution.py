@@ -27,7 +27,7 @@ from typing import List, Tuple
 
 from bpy.types import Object, Collection
 
-from ..thermal_core.contracts import ObjectTempInitType, SpecScope
+from ..thermal_core.contracts import InitType, SpecScope
 from ..thermal_core.specs import TempInitSpec
 from .init_registry import InitStrategyRegistry
 
@@ -66,7 +66,7 @@ class InvalidCollectionSpecError(SpecResolutionError):
     ID-property editing. Raised immediately to highlight the issue.
     """
 
-    def __init__(self, collection: Collection, init_type: ObjectTempInitType):
+    def __init__(self, collection: Collection, init_type: InitType):
         self.collection = collection
         self.init_type = init_type
         super().__init__(
@@ -78,7 +78,7 @@ class InvalidCollectionSpecError(SpecResolutionError):
 class SpecsResolver:
 
     @staticmethod
-    def _build_spec_for(props_owner, init_type: ObjectTempInitType) -> TempInitSpec:
+    def _build_spec_for(props_owner, init_type: InitType) -> TempInitSpec:
         """ Look up the strategy descriptor for init_type and build a spec
         from the matching sub-PropertyGroup on props_owner.thermal_init.
 
@@ -98,10 +98,10 @@ class SpecsResolver:
         """
         candidates: List[Tuple[Collection, TempInitSpec]] = []
         for collection in obj.users_collection:
-            coll_init_type = ObjectTempInitType[collection.thermal_init.init_type]
-            if coll_init_type is ObjectTempInitType.INHERIT:
+            coll_init_type = InitType[collection.thermal_init.init_type]
+            if coll_init_type is InitType.INHERIT:
                 continue
-            if coll_init_type not in ObjectTempInitType.allowed_for_scope(SpecScope.COLLECTION):
+            if coll_init_type not in InitType.allowed_for_scope(SpecScope.COLLECTION):
                 raise InvalidCollectionSpecError(collection, coll_init_type)
             candidates.append((collection, SpecsResolver._build_spec_for(collection, coll_init_type)))
         return candidates
@@ -121,9 +121,9 @@ class SpecsResolver:
         :raises NotImplementedError: the resolved strategy has no
             StrategyDescriptor yet (e.g. GRADIENT, AMBIENT).
         """
-        obj_init_type = ObjectTempInitType[obj.thermal_init.init_type]
+        obj_init_type = InitType[obj.thermal_init.init_type]
 
-        if obj_init_type is not ObjectTempInitType.INHERIT:
+        if obj_init_type is not InitType.INHERIT:
             return SpecsResolver._build_spec_for(obj, obj_init_type)
 
         candidates = SpecsResolver._candidate_specs_from_collections(obj)

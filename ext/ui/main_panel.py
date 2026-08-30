@@ -10,7 +10,7 @@ from bpy.types import Panel, Context, ID, Object, Collection
 
 from ..operators.names import Labels
 from ..constants import *
-from ..thermal_core.contracts import ObjectTempInitType, SpecScope
+from ..thermal_core.contracts import InitType, SpecScope
 from .init_registry import InitStrategyRegistry
 
 
@@ -53,9 +53,9 @@ class SpecSection(UISection):
         strategy_props = target.thermal_init
         layout.prop(strategy_props, "init_type")
 
-        init_type = ObjectTempInitType[strategy_props.init_type]
+        init_type = InitType[strategy_props.init_type]
 
-        if init_type is ObjectTempInitType.INHERIT:
+        if init_type is InitType.INHERIT:
             # Resolving what INHERIT actually evaluates to
             layout.label(text="Inherits from collection default", icon='INFO')
             return
