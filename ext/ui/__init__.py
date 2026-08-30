@@ -1,4 +1,4 @@
-from .main_panel import MainPanel, InfoPanel
+from .main_panel import MainPanel, InfoPanel, CollectionSpecPanel
 from .properties import (
     data_properties,
     SceneIgnoreRules,
@@ -10,6 +10,9 @@ from .properties import (
 
 properties = data_properties
 
+
+# PropertyGroup classes referenced via PointerProperty (Uniform/WeightPainted) must be registered before the
+# class that points to them (InitStrategyProperties).
 classes = (
     SceneIgnoreRules,
     UniformTempProperties,
@@ -17,5 +20,6 @@ classes = (
     InitStrategyProperties,
     ThermalProperties,
     MainPanel,
+    CollectionSpecPanel,
     InfoPanel,
 )
