@@ -20,3 +20,6 @@ class ShadingType(Enum):
 
     # Custom implementation of ray shaders, potentially very slow.
     MANUAL_RAY = "Custom Ray"
+
+    # Just emit a temperature map for the scene
+    TEMPERATURE_SHADER = "Temperature Shader"

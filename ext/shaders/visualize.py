@@ -13,18 +13,17 @@ def build_temperature_node_graph(
     material: Material, attribute_name: str, min_value: float, max_value: float,
 ) -> None:
     """ Clears material's node tree and rebuilds it as the graph described
-    above. Idempotent - safe to call again (e.g. after re-baking with a
-    different range) since it always starts from a clean slate rather than
+    above. Idempotent since it always starts from a clean slate rather than
     patching an existing graph.
 
-    :param material: material to (re)build. use_nodes is turned on if not
+    :param material: material to build. use_nodes is turned on if not
         already.
     :param attribute_name: name of the per-vertex/point float attribute to
-        read (see constants.TEMPERATURE_ATTR_NAME).
+        read
     :param min_value: attribute value that maps to the cold end of the
-        palette (Map Range "From Min").
+        palette
     :param max_value: attribute value that maps to the hot end of the
-        palette (Map Range "From Max").
+        palette
     """
     material.use_nodes = True
     tree = material.node_tree
@@ -63,10 +62,6 @@ def build_temperature_node_graph(
 
 def _apply_thermal_palette(color_ramp: ColorRamp) -> None:
     """ Overwrites color_ramp's stops with a cold(blue)->hot(red) palette.
-    A fresh ShaderNodeValToRGB always starts with exactly 2 elements
-    (position 0.0 black, position 1.0 white) - the first/last stops here
-    reuse those two elements, and the two intermediate stops are inserted
-    via elements.new().
     """
     stops = (
         (0.00, (0.0, 0.0, 0.6, 1.0)),   # coldest - deep blue
