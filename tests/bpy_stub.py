@@ -36,11 +36,17 @@ if "bpy" not in sys.modules:
     class UILayout:
         pass
 
+    class Material:
+        pass
+
+    class ColorRamp:
+        pass
+
     class Context:
         pass
 
     for cls in (PropertyGroup, Operator, Panel, NodeTree, ID, Object,
-                Collection, Scene, UILayout, Context):
+                Collection, Scene, UILayout, Context, Material, ColorRamp):
         setattr(bpy_types, cls.__name__, cls)
 
     def _nop_property(*args, **kwargs):

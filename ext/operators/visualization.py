@@ -80,10 +80,7 @@ class VisualizeTemperatureOperator(Operator):
 
     @staticmethod
     def _iter_baked_mesh_objects(context) -> List[Object]:
-        """ Every mesh object in the scene that has already been baked (see
-        operators/baking.py:BakeTemperatureOperator). Objects never baked, or
-        baked then reverted, are silently excluded rather than erroring - this
-        operator visualizes what's there, it doesn't bake on the fly.
+        """ Returns an iterator to every mesh object in the scene that has already been baked.
         """
         return [
             obj for obj in context.scene.objects
