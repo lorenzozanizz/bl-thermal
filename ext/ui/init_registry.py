@@ -1,34 +1,13 @@
-"""
-Central mapping from ObjectTempInitType -> everything needed to work with
-that strategy: its bpy PropertyGroup class, the attribute it lives under on
+""" Central mapping from ObjectTempInitType -> everything needed to work with
+that strategy, like its class, the attribute it lives under on
 InitStrategyProperties, how to build the pure thermal_core spec from it, and
 how to draw its parameters.
-
-This is the single seam new strategies plug into. Adding GRADIENT later
-means: (1) a dataclass in thermal_core/specs.py, (2) a PropertyGroup in
-ui/properties.py, (3) one new entry in `_REGISTRY` below. main_panel.py
-(Phase 4) and the Phase 5 conversion boundary never branch on the enum
-directly - they always go through get_strategy() / strategies_for_scope().
-
-Lives in `ui/`, not `thermal_core/`, because it references bpy PropertyGroup
-classes and bpy.types.UILayout drawers - thermal_core stays bpy-free, per
-the extension's existing pytest guard in the top-level __init__.py.
-
-Note on scope: `ui/properties.py`'s enum items callback intentionally lists
-every scope-legal ObjectTempInitType from contracts.py (including strategies
-that aren't implemented yet, like GRADIENT/AMBIENT) - it describes what's
-*contractually* allowed, not what's *built*. This module is what knows what's
-actually implemented. Importing this module from properties.py to filter the
-dropdown would create a circular import (this module already imports the
-PropertyGroups defined there), so that filtering - and gracefully handling a
-selected-but-unimplemented strategy - is deferred to Phase 4's panel code,
-which calls get_strategy() and can catch NotImplementedError.
 """
 
 from typing import Type
 from abc import ABC, abstractmethod
 
-from bpy.types import PropertyGroup, UILayout
+from bpy.types import PropertyGroup, UILayout, Object
 
 from ..thermal_core.contracts import InitType, SpecScope
 from ..thermal_core.specs import TempInitSpec, UniformTempSpec, WeightPaintedTempSpec
@@ -131,7 +110,15 @@ class InitWeightPainted(StrategyDescriptor):
 
     @staticmethod
     def draw(layout: UILayout, props: WeightPaintedTempProperties) -> None:
-        layout.prop(props, "vertex_group")
+        # WEIGHT_PAINTED is Object-only, so props.id_data is normally an Object.
+        # prop_search() renders a searchable dropdown against that object's
+        # actual vertex groups instead of a string field, so a typo
+        # or stale name can no longer be entered
+        target = props.id_data
+        if isinstance(target, Object) and target.type == 'MESH':
+            layout.prop_search(props, "vertex_group", target, "vertex_groups")
+        else:
+            layout.prop(props, "vertex_group")
         layout.prop(props, "min_value")
         layout.prop(props, "max_value")
         layout.prop(props, "unit")
