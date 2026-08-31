@@ -1,6 +1,6 @@
 from enum import Enum
 
-from .nodes import *
+from .visualize import *
 
 
 class ShadingType(Enum):

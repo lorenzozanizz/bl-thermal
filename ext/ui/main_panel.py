@@ -107,10 +107,18 @@ class SpecSection(UISection):
 
 
 class RenderSection(UISection):
-    """ Placeholder """
+    """ Triggers VisualizeTemperatureOperator
+    which colors every baked object by its TEMPERATURE_ATTR_NAME attribute
+    via a shared material.
+    """
 
     def draw(self, context: Context, layout) -> None:
-        pass
+        layout.operator(
+            Labels.VISUALIZE_TEMPERATURE.value,
+            text="Visualize Temperature",
+            icon='MATERIAL',
+        )
+        layout.label(text="View in Material Preview or Rendered shading", icon='INFO')
 
 
 class CentralPanel(UISection):
@@ -138,6 +146,7 @@ class MainPanel(Panel):
         panel = CentralPanel(sections=[
             SpecSection(scope=SpecScope.OBJECT, get_target=lambda ctx: ctx.object),
             BakeSection(),
+            RenderSection(),
         ])
         panel.draw(context, self.layout)
 

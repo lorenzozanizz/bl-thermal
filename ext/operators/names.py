@@ -33,3 +33,12 @@ class Labels(Enum):
     DIFFUSE_TEMPERATURE_     = "thermal.diffuse_temperature"
     # ( Reserved for the future time-evolution operator, not yet implemented )
     EVOLVE_TEMPERATURE_      = "thermal.evolve_temperature"
+
+
+    # ------------- Names inside "thermal" (visualization family) ---------------
+    # |
+    # ( Builds/updates the shared "Thermal Visualization" material and
+    #   assigns it to every baked mesh object. )
+    VISUALIZE_TEMPERATURE    = "thermal.visualize_temperature"
+
+

@@ -100,7 +100,7 @@ class FalloffFunctions:
         :return:
         """
         eval_fn = {
-            "LINEAR": lambda s, i: i.vertex_group_weights,
+            "LINEAR": lambda t: t,
             "EASE_IN_OUT": FalloffFunctions._smoothstep,
         }.get(falloff_type, lambda t: t)
         return eval_fn(weights)

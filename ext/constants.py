@@ -11,3 +11,9 @@ DOCU_URL = "https://github.com/lorenzozanizz/bl-thermal"
 TEMPERATURE_ATTR_NAME = "thermal_temperature_k"
 TEMPERATURE_ATTR_TYPE = 'FLOAT'
 TEMPERATURE_ATTR_DOMAIN = 'POINT'
+
+# ------------- Temperature visualization material ---------------
+# |
+# ( Name of the single shared material VisualizeTemperatureOperator builds
+#   and assigns to every baked object )
+TEMPERATURE_MATERIAL_NAME = "Thermal Visualization"
