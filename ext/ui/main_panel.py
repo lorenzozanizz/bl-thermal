@@ -12,6 +12,7 @@ from ..operators.names import Labels
 from ..constants import *
 from ..thermal_core.contracts import InitType, SpecScope
 from .init_registry import InitStrategyRegistry
+from .resolution import SpecsResolver, SpecResolutionError
 
 
 class UISection(metaclass=ABCMeta):
@@ -24,10 +25,45 @@ class UISection(metaclass=ABCMeta):
 
 
 class BakeSection(UISection):
-    """ Placeholder for baking UI panel """
+    """ A section containing all options and buttons pertaining to
+    scene baking, including specification resolution outputs and the
+    baking itself.
+
+    Includes a count and warnings about spec resolutions in the hierarchy.
+    """
+
+    @staticmethod
+    def _count_ready(context: Context) -> tuple[int, int]:
+        ready = 0
+        total_mesh = 0
+        for obj in context.scene.objects:
+            if obj.type != 'MESH':
+                continue
+            total_mesh += 1
+            try:
+                spec = SpecsResolver.resolve_object_spec(obj)
+                spec.validate()
+            except (SpecResolutionError, NotImplementedError, ValueError):
+                continue
+            ready += 1
+        return ready, total_mesh
 
     def draw(self, context: Context, layout) -> None:
-        pass
+        ready, total_mesh = 1, 2# self._count_ready(context)
+
+        if total_mesh == 0:
+            layout.label(text="No mesh objects in scene", icon='INFO')
+        else:
+            layout.label(
+                text=f"{ready}/{total_mesh} mesh object(s) ready to bake",
+                icon='CHECKMARK' if ready == total_mesh else 'INFO',
+            )
+
+        layout.operator(
+            Labels.BAKE_TEMPERATURE.value,
+            text="Bake Initial Temperature",
+            icon='RENDER_STILL',
+        )
 
 
 class SpecSection(UISection):
@@ -101,6 +137,7 @@ class MainPanel(Panel):
     def draw(self, context: Context) -> None:
         panel = CentralPanel(sections=[
             SpecSection(scope=SpecScope.OBJECT, get_target=lambda ctx: ctx.object),
+            BakeSection(),
         ])
         panel.draw(context, self.layout)
 
