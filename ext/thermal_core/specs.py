@@ -6,6 +6,7 @@ temperature field is specified.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import Optional
 
 from .temperature import Conversions
 from .contracts import InitType
@@ -32,6 +33,12 @@ class TempInitSpec(ABC):
         Subclasses should extend this rather than overriding it outright.
         """
         pass
+
+    @staticmethod
+    def get_vertex_group() -> Optional[str]:
+        """ Returns true if the initialization strategy requires some kind of
+        vertex weighing, which will be extracted from the returned value """
+        return None
 
 
 @dataclass(frozen=True)
@@ -71,6 +78,9 @@ class WeightPaintedTempSpec(TempInitSpec):
         if self.min_k > self.max_k:
             raise ValueError(f"WeightPaintedTempSpec.min_k ({self.min_k}) must be <= max_k ({self.max_k})")
 
+    def get_vertex_group(self) -> str:
+        """ This strategy requires weights. """
+        return self.vertex_group
 
 @dataclass
 class ThermalProfile:

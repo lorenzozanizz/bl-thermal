@@ -27,11 +27,13 @@ if 'pytest' not in sys.modules:
     from .ui import properties as data_properties
 
     from .ui import classes as ui_classes
+    from .operators import classes as operator_classes
 
     import bpy
 
     registration_classes = (
         *ui_classes,
+        *operator_classes,
     )
 
 

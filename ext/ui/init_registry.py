@@ -126,8 +126,8 @@ class InitWeightUniform(StrategyDescriptor):
 class InitWeightPainted(StrategyDescriptor):
 
     init_type = InitType.WEIGHT_PAINTED
-    property_group = WeightPaintedTempProperties,
-    attr_name = "weight_painted",
+    property_group = WeightPaintedTempProperties
+    attr_name = "weight_painted"
 
     @staticmethod
     def draw(layout: UILayout, props: WeightPaintedTempProperties) -> None:
@@ -146,4 +146,3 @@ class InitWeightPainted(StrategyDescriptor):
             max_k=Conversions.to_kelvin(props.max_value, unit),
             falloff=props.falloff,
         )
-

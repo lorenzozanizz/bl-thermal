@@ -127,6 +127,7 @@ def _evaluate_weight_painted(spec: WeightPaintedTempSpec, inputs: BakeInputs) ->
             "weights before calling evaluate()."
         )
 
+    # May already be a numpy array, just convert it to be sure
     weights = np.asarray(weights, dtype=np.float64)
     if weights.shape[0] != inputs.vertex_count:
         raise ValueError(
