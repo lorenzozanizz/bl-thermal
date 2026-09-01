@@ -61,3 +61,32 @@ class ThermographyType(Enum):
     TEMPERATURE = "Temperature"
     RADIANCE = "Radiance"
     RAYTRACE = "Raytrace"
+
+
+class TransferType(Enum):
+    """ Radiometric transfer function used to turn a surface temperature into
+    a sensor signal.
+
+    A thermal camera does not measure temperature but measures radiated power
+    inside a finite waveband and infers a temperature from it, up to the problem of
+    emissivity.
+
+    The transfer type is the law which maps from temperature to raw radiated power, before
+    applying emissivity reduction.
+    """
+
+    # S = R / (exp(B/T) - F) + O. A narrow-band reduction of Planck's law,
+    #   and the calibration form real LWIR cameras ship their constants in.
+    # Taken from
+    # https://device.report/m/bb0fb3a133c0e28de013f89093d51f0629ef0e14866976b11b9d92bc19177b85.pdf
+    # GenICam ICD FLIR AX5 Camera
+    RBFO = "Calibration (R/B/F/O)"
+
+    # Planck's law multiplied by the sensor's spectral response and
+    # integrated across the band, precomputed into a lookup table.
+    PLANCK_LUT = "Band-integrated Planck"
+
+    # M = eps*sigma*T^4. Total radiated power across all wavelengths, from
+    # reference \cite{waldermar_et_dudzik}
+    STEFAN_BOLTZMANN = "Stefan-Boltzmann"
+
