@@ -1,0 +1,2 @@
+# Exclude all produced zips due to Blender extension packing.
+*.zip
