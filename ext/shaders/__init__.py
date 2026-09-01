@@ -1,6 +1,6 @@
 from enum import Enum
 
-from .visualize import *
+from .visualize import build_temperature_node_graph
 
 
 class ShadingType(Enum):
@@ -13,13 +13,13 @@ class ShadingType(Enum):
     # Same, but use OSL (can only work on GPU for OptiX
     RAY_OSL_SHADER = "Ray OSL Shader"
 
+    # Custom implementation of ray shaders, potentially very slow.
+    MANUAL_RAY = "Custom Ray"
+
     # Use nodes to perform a scalar mapping, no ray tracing
     NODE_SHADER = "Node Shader"
     # Try to attempt a numpy per-pixel emittance computation
     NUMPY_SHADER = "NumPy Shader"
-
-    # Custom implementation of ray shaders, potentially very slow.
-    MANUAL_RAY = "Custom Ray"
 
     # Just emit a temperature map for the scene
     TEMPERATURE_SHADER = "Temperature Shader"
