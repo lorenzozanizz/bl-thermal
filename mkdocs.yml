@@ -1,0 +1,20 @@
+site_name: Thermography Documentation & Tutorials
+theme:
+  name: material
+  features:
+    - navigation.tabs              # Top tabs instead of sidebar
+    - navigation.tabs.sticky       # Tabs stay at top when scrolling
+    - navigation.instant           # Instant loading (no page reload)
+    - search.suggest               # Search suggestions
+    - search.highlight             # Highlight search results
+    - content.code.copy            # Copy button on code blocks
+    - toc.integrate                # Table of contents in sidebar
+  palette:
+    - scheme: default
+      primary: blue
+      accent: cyan
+  font:
+    text: Roboto
+    code: Roboto Mono
+nav:
+  - Home: index.md
