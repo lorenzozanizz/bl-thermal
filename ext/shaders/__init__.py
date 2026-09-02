@@ -1,25 +1,32 @@
-from enum import Enum
+"""
+Shader construction for thermal rendering.
+"""
 
+from ..thermal_core.contracts import ShadingType, TerminalMode
 from .visualize import build_temperature_node_graph
+from .transfer import TransferDescriptor, TransferNodeRegistry, RBFOTransfer
+from .emissivity import build_apparent_signal
+from .terminal import build_terminal, signal_span
+from .palette import apply_thermal_palette
+from .properties import RBFOTransferProperties
 
+__all__ = (
+    "ShadingType",
+    "TerminalMode",
+    "build_temperature_node_graph",
+    "TransferDescriptor",
+    "TransferNodeRegistry",
+    "RBFOTransfer",
+    "build_apparent_signal",
+    "build_terminal",
+    "signal_span",
+    "apply_thermal_palette",
+    "RBFOTransferProperties",
+)
 
-class ShadingType(Enum):
-    """
-
-    """
-    # Use geometric/graphical nodes to construct the correct shader using
-    # Cycles default ray tracing capabilities
-    RAY_NODE_SHADER = "Ray Node Shader"
-    # Same, but use OSL (can only work on GPU for OptiX
-    RAY_OSL_SHADER = "Ray OSL Shader"
-
-    # Custom implementation of ray shaders, potentially very slow.
-    MANUAL_RAY = "Custom Ray"
-
-    # Use nodes to perform a scalar mapping, no ray tracing
-    NODE_SHADER = "Node Shader"
-    # Try to attempt a numpy per-pixel emittance computation
-    NUMPY_SHADER = "NumPy Shader"
-
-    # Just emit a temperature map for the scene
-    TEMPERATURE_SHADER = "Temperature Shader"
+# PropertyGroups owned by this package, consumed by the addon's registration
+# tuple. Transfer parameter groups must register before any group pointing at
+# them.
+classes = (
+    RBFOTransferProperties,
+)

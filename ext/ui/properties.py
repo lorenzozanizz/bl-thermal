@@ -15,13 +15,16 @@ the type of the owning ID datablock (`self.id_data`), so we don't need two
 near-duplicate PropertyGroup classes.
 """
 
-from bpy.types import PropertyGroup, NodeTree, Object, Collection
+from bpy.types import PropertyGroup, NodeTree, Object, Collection, Scene
 from bpy.props import (
     PointerProperty, StringProperty, FloatProperty, EnumProperty,
 )
 
-from ..thermal_core.contracts import InitType, SpecScope
-from ..thermal_core.temperature import TempUnit
+from ..thermal_core.contracts import (
+    InitType, SpecScope, ShadingType, TransferType, TerminalMode,
+)
+from ..thermal_core.temperature import TempUnit, Conversions
+from ..shaders.properties import RBFOTransferProperties
 from ..registration import PropertyRegistration
 
 
@@ -113,11 +116,108 @@ class ThermalProperties(PropertyGroup):
     pass
 
 
+class ThermalRenderSettings(PropertyGroup):
+    """ Scene-level render configuration for
+        - shading path
+        - transfe,
+        - and the surface/environment parameters the output is mixed with
+
+    Attached to Scene and not individual objects because most of these is a
+    property of the camera or the environment, not of a single mesh.
+
+    The exception is emissivity, which is per-surface and is put here
+    only as a starting point, to be changed later in individual full-object specification.
+    """
+
+    shading_type: EnumProperty(                                         # type: ignore
+        name="Shading",
+        description="How the thermal signal is evaluated and turned into an image",
+        items=[(m.name, m.value, "") for m in ShadingType],
+        default=ShadingType.NODE_SHADER.name,
+    )
+    transfer_type: EnumProperty(                                        # type: ignore
+        name="Transfer",
+        description="Radiometric function converting surface temperature into "
+                    "sensor signal",
+        items=[(m.name, m.value, "") for m in TransferType],
+        default=TransferType.RBFO.name,
+    )
+    rbfo: PointerProperty(type=RBFOTransferProperties)                  # type: ignore
+
+    emissivity: FloatProperty(                                          # type: ignore
+        name="Emissivity",
+        description="Fraction of a blackbody's emission this surface actually "
+                    "radiates. The remainder is reflected from the environment",
+        default=0.95,
+        min=0.0,
+        max=1.0,
+    )
+    reflected_temperature: FloatProperty(                               # type: ignore
+        name="Reflected Temperature",
+        description="Apparent temperature of the surroundings, mixed in through "
+                    "the (1 - emissivity) term. A single constant standing in "
+                    "for the environment, as on a real camera",
+        default=20.0,
+    )
+    reflected_unit: EnumProperty(                                       # type: ignore
+        name="Unit",
+        description="Display unit for the reflected temperature above",
+        items=[(u.name, u.value, "") for u in TempUnit],
+        default=TempUnit.CELSIUS.name,
+    )
+
+    terminal_mode: EnumProperty(                                        # type: ignore
+        name="Output",
+        description="False colour is a viewport display choice "
+                    "and discards recoverability",
+        items=[(m.name, m.value, "") for m in TerminalMode],
+        default=TerminalMode.RAW.name,
+    )
+    span_min: FloatProperty(                                            # type: ignore
+        name="Span Min",
+        description="Temperature shown at the cold end of the palette. Display "
+                    "only, it never affects a raw render",
+        default=0.0,
+    )
+    span_max: FloatProperty(                                            # type: ignore
+        name="Span Max",
+        description="Temperature shown at the hot end of the palette. Display "
+                    "only, it never affects a raw render",
+        default=100.0,
+    )
+    span_unit: EnumProperty(                                            # type: ignore
+        name="Unit",
+        description="Display unit for the span above",
+        items=[(u.name, u.value, "") for u in TempUnit],
+        default=TempUnit.CELSIUS.name,
+    )
+
+    def reflected_temperature_k(self) -> float:
+        """ The reflected temperature in Kelvin, whatever unit it is shown in. """
+        return Conversions.to_kelvin(
+            self.reflected_temperature, TempUnit[self.reflected_unit]
+        )
+
+    def span_min_k(self) -> float:
+        """ Cold end of the display span, in Kelvin. """
+        return Conversions.to_kelvin(self.span_min, TempUnit[self.span_unit])
+
+    def span_max_k(self) -> float:
+        """ Hot end of the display span, in Kelvin. """
+        return Conversions.to_kelvin(self.span_max, TempUnit[self.span_unit])
+
+
 data_properties = (
     PropertyRegistration(
         owner=Object, name="thermal_init", value=PointerProperty(type=InitStrategyProperties)
     ),
     PropertyRegistration(
         owner=Collection, name="thermal_init", value=PointerProperty(type=InitStrategyProperties)
+    ),
+)
+
+scene_properties = (
+    PropertyRegistration(
+        owner=Scene, name="thermal_render", value=PointerProperty(type=ThermalRenderSettings)
     ),
 )

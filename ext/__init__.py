@@ -23,24 +23,27 @@ import sys
 # Do not register the BPY module if we are testing
 if 'pytest' not in sys.modules:
 
-    from .thermal_core import properties as simulation_properties
-    from .ui import properties as data_properties
+    from .ui import properties as addon_properties
 
+    from .shaders import classes as shader_classes
     from .ui import classes as ui_classes
     from .operators import classes as operator_classes
 
     import bpy
 
+    # Transfer parameter groups register first because ThermalRenderSettings holds a
+    # PointerProperty to RBFOTransferProperties and cannot precede it.
     registration_classes = (
+        *shader_classes,
         *ui_classes,
         *operator_classes,
     )
 
 
-    # Flatten all PropertyRegistration declarations across modules. Each
-    # entry knows its own target (Object, Collection, Scene, ...) - see
-    # registration.py - so register()/unregister() no longer assume Scene.
-    properties = (*simulation_properties, *data_properties)
+    # Flatten all PropertyRegistration declarations across modules
+    properties = tuple(
+        addon_properties
+    )
 
 
 def register():

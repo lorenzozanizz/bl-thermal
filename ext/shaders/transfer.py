@@ -15,6 +15,7 @@ from ..thermal_core.contracts import TransferType
 from ..thermal_core.radiometry import (
     MIN_TRANSFER_TEMPERATURE_K, RBFOTransferSpec, TransferSpec,
 )
+from .nodes import MathCompositor
 from .properties import RBFOTransferProperties
 
 
@@ -34,7 +35,6 @@ class TransferDescriptor(ABC):
     @staticmethod
     @abstractmethod
     def draw(layout: UILayout, props: PropertyGroup) -> None:
-        """ Draw this descriptor in the UI, with its editable properties. """
         pass
 
     @staticmethod
@@ -100,73 +100,6 @@ class TransferNodeRegistry:
         return transfer_type in TransferNodeRegistry._REGISTRY
 
 
-class MathCompositor:
-    """ Appends Math nodes left to right, tracking position and current output.
-
-    Each operand is either a float or a NodeSocket, and finishes inside the given
-    input index.
-
-    The class composes the computation tree in steps, at each step taking track
-    of which node was just added and inserting after it.
-    """
-
-    def __init__(self, tree: ShaderNodeTree, location: Tuple[float, float], socket: NodeSocket):
-        self._tree = tree
-        # Initial offset of the tree in the composite editor
-        self._x, self._y = location
-        self.socket = socket
-
-        # offset
-        self.CONSTANT_OFFSET = 180
-
-    def step(self, operation: str, operand, socket_index: int = 1, label: str = "") -> NodeSocket:
-        """ Add one Math node consuming the current socket.
-
-        :param operation: ShaderNodeMath operation, e.g. 'DIVIDE'
-            Must be a valid operation in the Blender interface
-            https://docs.blender.org/api/current/bpy_types_enum_items/node_math_items.html#rna-enum-node-math-items
-        :param operand: float or NodeSocket for the other input.
-        :param socket_index: input index the current socket occupies
-        :param label: node label, shown in the shader editor
-        """
-        node = self._tree.nodes.new('ShaderNodeMath')
-        node.operation = operation
-        node.location = (self._x, self._y)
-        node.label = label
-
-        # This works because we assume the index is 0 or 1
-        other_index = 1 - socket_index
-        self._tree.links.new(self.socket, node.inputs[socket_index])
-        if isinstance(operand, NodeSocket):
-            self._tree.links.new(operand, node.inputs[other_index])
-        else:
-            node.inputs[other_index].default_value = operand
-
-        # Insert a small horizontal step, this is only useful for direct inspection
-        self._x += self.CONSTANT_OFFSET
-        self.socket = node.outputs[0]
-        return self.socket
-
-    def step_unary(self, operation: str, label: str = "") -> NodeSocket:
-        """ Add a single-input Math node, which reads input 0 only.
-
-        :param operation: ShaderNodeMath operation, e.g. 'EXPONENT'. See this docs for
-            step() to see the list of available operations.
-        :param label: node label, shown in the shader editor.
-        """
-        node = self._tree.nodes.new('ShaderNodeMath')
-        node.operation = operation
-        node.location = (self._x, self._y)
-        node.label = label
-
-        self._tree.links.new(self.socket, node.inputs[0])
-
-        # Insert a small horizontal step, this is only useful for direct inspection
-        self._x += self.CONSTANT_OFFSET
-        self.socket = node.outputs[0]
-        return self.socket
-
-
 @TransferNodeRegistry.register(TransferType.RBFO)
 class RBFOTransfer(TransferDescriptor):
     """ S = R / (exp(B/T) - F) + O, as seven Math nodes.
@@ -178,10 +111,6 @@ class RBFOTransfer(TransferDescriptor):
     transfer_type = TransferType.RBFO
     property_group = RBFOTransferProperties
     attr_name = "rbfo"
-
-    # Largest exponent argument passed to a Math EXPONENT node. Shader math is
-    # float32, which overflows past about an exponent of 90.
-    MAX_EXPONENT_ARGUMENT = 80.0
 
     @staticmethod
     def draw(layout: UILayout, props: RBFOTransferProperties) -> None:

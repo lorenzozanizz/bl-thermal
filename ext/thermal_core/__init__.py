@@ -1,4 +1,6 @@
-from .properties import simulation_properties
+"""
+Pure simulation core. No module in this package may import bpy.
 
+"""
 
-properties = simulation_properties
+properties = ()

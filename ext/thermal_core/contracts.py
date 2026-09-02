@@ -54,6 +54,46 @@ class SimulationType(Enum):
     STATIONARY = "Stationary"
     DYNAMIC = "Dynamic"
 
+class ShadingType(Enum):
+    """ Machinery used to evaluate a transfer and turn it into an image.
+
+    Orthogonal to TransferType, which is the physics. NODE_SHADER and
+    RAY_NODE_SHADER can run identical radiometry and still produce different
+    images, because only one of them traces reflections.
+    """
+    # Use geometric/graphical nodes to construct the correct shader using
+    # Cycles default ray tracing capabilities
+    RAY_NODE_SHADER = "Ray Node Shader"
+    # Same, but use OSL (can only work on GPU for OptiX
+    RAY_OSL_SHADER = "Ray OSL Shader"
+
+    # Use nodes to perform a scalar mapping, no ray tracing
+    NODE_SHADER = "Node Shader"
+    # Try to attempt a numpy per-pixel emittance computation
+    NUMPY_SHADER = "NumPy Shader"
+
+    # Custom implementation of ray shaders, potentially very slow.
+    MANUAL_RAY = "Custom Ray"
+
+    # Just emit a temperature map for the scene
+    TEMPERATURE_SHADER = "Temperature Shader"
+
+    def uses_transfer(self) -> bool:
+        """ Whether this path can use transfer functions to normalize
+        """
+        return self is not ShadingType.TEMPERATURE_SHADER
+
+
+class TerminalMode(Enum):
+    """ What the end of a shader graph produces. """
+
+    # The quantitative emissivity to be used for EXR output
+    RAW = "Raw Signal"
+    # Signal normalized and run through a palette. Used only for
+    # viewport visualization of the baked temperature / emission map
+    FALSE_COLOR = "False Color"
+
+
 class ThermographyType(Enum):
     """
 
@@ -89,4 +129,3 @@ class TransferType(Enum):
     # M = eps*sigma*T^4. Total radiated power across all wavelengths, from
     # reference \cite{waldermar_et_dudzik}
     STEFAN_BOLTZMANN = "Stefan-Boltzmann"
-
