@@ -24,9 +24,9 @@ from typing import Tuple
 import numpy as np
 from bpy.types import Node, NodeSocket, PropertyGroup, ShaderNodeTree
 
+from .nodes import MathCompositor
 from ..thermal_core.contracts import TerminalMode
 from ..thermal_core.radiometry import TransferRegistry, TransferSpec
-from .nodes import NODE_STRIDE_X
 from .palette import apply_thermal_palette
 
 
@@ -62,10 +62,11 @@ def build_terminal(
     """
     mode = TerminalMode[settings.terminal_mode]
     x, y = location
+    stride_x, _ = MathCompositor.strides()
 
     if mode is TerminalMode.FALSE_COLOR:
         shaded = _build_false_color(tree, signal_socket, settings, spec, (x, y))
-        x += 2 * NODE_STRIDE_X
+        x += 2 * stride_x
     else:
         shaded = signal_socket
 
@@ -78,7 +79,7 @@ def build_terminal(
     tree.links.new(shaded, emission.inputs['Color'])
 
     output: Node = tree.nodes.new('ShaderNodeOutputMaterial')
-    output.location = (x + NODE_STRIDE_X, y)
+    output.location = (x + stride_x, y)
     tree.links.new(emission.outputs['Emission'], output.inputs['Surface'])
 
 
@@ -92,6 +93,7 @@ def _build_false_color(
     """ Map the signal onto the display span and through the palette. """
     low, high = signal_span(spec, settings.span_min_k(), settings.span_max_k())
     x, y = location
+    stride_x, _ = MathCompositor.strides()
 
     map_range: Node = tree.nodes.new('ShaderNodeMapRange')
     map_range.location = (x, y)
@@ -106,7 +108,7 @@ def _build_false_color(
     tree.links.new(signal_socket, map_range.inputs['Value'])
 
     color_ramp: Node = tree.nodes.new('ShaderNodeValToRGB')
-    color_ramp.location = (x + NODE_STRIDE_X, y)
+    color_ramp.location = (x + stride_x, y)
     apply_thermal_palette(color_ramp.color_ramp)
     tree.links.new(map_range.outputs['Result'], color_ramp.inputs['Fac'])
 

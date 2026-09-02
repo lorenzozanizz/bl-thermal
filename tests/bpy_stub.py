@@ -39,14 +39,24 @@ if "bpy" not in sys.modules:
     class Material:
         pass
 
+    class NodeSocket:
+        pass
+
     class ColorRamp:
         pass
 
     class Context:
         pass
 
+    class ShaderNodeTree:
+        pass
+
+    class Node:
+        pass
+
     for cls in (PropertyGroup, Operator, Panel, NodeTree, ID, Object,
-                Collection, Scene, UILayout, Context, Material, ColorRamp):
+                Collection, Scene, UILayout, Context, Material, ColorRamp, NodeSocket,
+                ShaderNodeTree, Node):
         setattr(bpy_types, cls.__name__, cls)
 
     def _nop_property(*args, **kwargs):
