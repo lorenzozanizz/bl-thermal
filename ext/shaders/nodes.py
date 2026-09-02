@@ -8,7 +8,6 @@ create-node/set-input/link dance.
 from typing import Tuple, Union
 
 from bpy.types import Node, NodeSocket, ShaderNodeTree
-from numba.core.typing.mathdecl import Math_hypot
 
 # type hint
 # Either a literal value or a socket to link from.
@@ -17,7 +16,7 @@ Operand = Union[float, NodeSocket]
 class TreeUtils:
 
     def feed(tree: ShaderNodeTree, socket_input, operand: Operand) -> None:
-        """ Drive a node input, either by linking a socket or setting a constant. """
+        """ Drive a node input, either by linking a socket or settin        g a constant. """
         if isinstance(operand, NodeSocket):
             tree.links.new(operand, socket_input)
         else:
