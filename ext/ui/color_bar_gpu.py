@@ -342,19 +342,21 @@ class ColorBar:
                     area.tag_redraw()
 
 
-if __name__ == '__main__':
-    colorbar = ColorBar(
-        colors=[
-            (0.0, 0.0, 1.0),  # blue
-            (0.0, 1.0, 1.0),  # cyan
-            (1.0, 1.0, 0.0),  # yellow
-            (1.0, 0.0, 0.0),  # red
-        ],
-        value_range=(-10.0, 50.0),
-        position=(40, 30),
-        size=(30, 300),
-        ticks=7,
-        label="Temperature",
-    )
-
-    colorbar.show()
+# Its a bit bad but we have to instantiate an instance of a color bar
+# at the module level so that the information about the registered handler
+# is saved somewhere and can be hidden/changed at runtime depending on
+# operator calls.
+left_bottom_color_bar = ColorBar(
+    colors=[
+        # This is just a sample palette, it will be changed on visualization call.
+        (0.0, 0.0, 1.0),  # blue
+        (0.0, 1.0, 1.0),  # cyan
+        (1.0, 1.0, 0.0),  # yellow
+        (1.0, 0.0, 0.0),  # red
+    ],
+    value_range=(-10.0, 50.0),
+    position=(40, 30),
+    size=(30, 300),
+    ticks=7,
+    label="Temperature",
+)

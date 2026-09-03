@@ -51,8 +51,12 @@ class VisualizeTemperatureOperator(Operator):
             self.report({'ERROR'}, str(error))
             return {'CANCELLED'}
 
+        # For now, override the current material to display the baked thermal
+        # map over the scene.
         for obj in objects_iter:
             VisualizeTemperatureOperator._assign_material(obj, material)
+
+
 
         self.report(
             {'INFO'},
