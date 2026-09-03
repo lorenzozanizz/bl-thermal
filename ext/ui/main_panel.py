@@ -18,6 +18,7 @@ from ..shaders.transfer import TransferNodeRegistry
 from .init_registry import InitStrategyRegistry
 from .text_wrap_utils import WrapWidget
 from .resolution import SpecsResolver, SpecResolutionError
+from .color_bar_gpu import left_bottom_color_bar
 
 
 class UISection(metaclass=ABCMeta):
@@ -231,10 +232,16 @@ class RenderSection(UISection):
     """ Builds the thermal material and assigns it to every baked object. """
 
     def draw(self, context: Context, layout) -> None:
-        layout.operator(
+        col = layout.row(align=True)
+        col.operator(
             Labels.VISUALIZE_TEMPERATURE.value,
             text="Build Thermal Material",
             icon='MATERIAL',
+        )
+        col.operator(
+            Labels.HIDE_COLOR_BAR.value if left_bottom_color_bar.is_active() else
+                Labels.SHOW_COLOR_BAR.value,
+            text="", icon="COLOR"
         )
         WrapWidget.draw(
             layout, context,

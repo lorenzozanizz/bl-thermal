@@ -61,6 +61,9 @@ class ColorBar:
         # Create the handler, then tag for its redraw at show() time
         self._tag_redraw()
 
+    def is_active(self) -> bool:
+        return self._handle is not None
+
     def hide(self):
         """ Remove the colorbar. This explicitly deletes the drawing
         handler that was created during show(). """
@@ -260,49 +263,73 @@ class ColorBar:
         raise ValueError("Colors must contain 3 (RGB) or 4 (RGBA) values.")
 
     @staticmethod
+    @staticmethod
     def _nice_ticks(vmin, vmax, count):
-        """ Generate approximately count aesthetically pleasing ticks.
-        This works by using an heuristic to slightly re-scale the range, and then find the ticks
-        by stepping up the required amount of times.
+        """Generate approximately count uniformly spaced, visually nice ticks.
 
-        For example:
-            (0, 137) -> [0, 20, 40, ..., 120, 140]
-            (-1.0, 1.0) -> [-1, -0.5, 0, 0.5, 1]
+        The endpoints are always kept exactly as provided (at most rounded). Interior ticks are
+        sampled uniformly and rounded to a sensible precision for display.
+
+        Examples:
+            (0, 137, 8) -> [0, 20, 40, 60, 80, 100, 120, 137]
+            (-1.0, 1.0, 5) -> [-1.0, -0.5, 0.0, 0.5, 1.0]
         """
-
-        if count < 2:
+        if count <= 1:
+            return [vmin]
+        if count == 2:
             return [vmin, vmax]
+        span = vmax - vmin
+        if span == 0:
+            return [vmin] * count
 
-        span = abs(vmax - vmin)
-        raw_step = span / (count - 1)
+        # Uniformly sample the range first.
+        step = span / (count - 1)
 
-        magnitude = 10 ** math.floor(math.log10(raw_step))
-        normalized = raw_step / magnitude
-        # Lock the value to one of a fixed amount of steps
-        nice = next((x for x in (1, 2, 5, 10) if normalized <= x), 10)
+        # Choose a sensible decimal precision for displaying the step.
+        magnitude = 10 ** math.floor(math.log10(abs(step)))
 
-        step = nice * magnitude
+        # Use 1, 2, or 5 × 10^n as the rounding unit.
+        normalized = abs(step) / magnitude
 
-        start = math.ceil(vmin / step) * step
-        end = math.floor(vmax / step) * step
+        if normalized <= 1:
+            nice_step = magnitude
+        elif normalized <= 2:
+            nice_step = 2 * magnitude
+        elif normalized <= 5:
+            nice_step = 5 * magnitude
+        else:
+            nice_step = 10 * magnitude
 
-        ticks = []
-        value = start
-        # Small epsilon avoids floating-point problems.
-        epsilon = step * 1e-10
+        # Number of decimal places needed to represent the nice step.
+        if nice_step >= 1:
+            decimals = 0
+        else:
+            decimals = max(0, int(-math.floor(math.log10(nice_step))))
 
-        while value <= end + epsilon:
-            ticks.append(value)
-            value += step
+        def nice_round(value):
+            return round(value, decimals)
 
-        # Always make sure the endpoints are represented if the generated ticks don't already include them.
-        if not ticks or abs(ticks[0] - vmin) > epsilon:
-            ticks.insert(0, vmin)
+        # Keep endpoints exactly unchanged.
+        ticks = [vmin]
 
-        if abs(ticks[-1] - vmax) > epsilon:
-            ticks.append(vmax)
+        # Round only interior ticks.
+        for i in range(1, count - 1):
+            value = vmin + i * step
+            ticks.append(nice_round(value))
 
-        return ticks
+        ticks.append(vmax)
+
+        # Rounding can cause two adjacent ticks to become equal. Remove duplicates while
+        # preserving the exact endpoints.
+        result = [ticks[0]]
+
+        for value in ticks[1:-1]:
+            if result[-1] < value < vmax:
+                result.append(value)
+
+        result.append(vmax)
+
+        return result
 
     @staticmethod
     def _format_value(value):
@@ -349,10 +376,10 @@ class ColorBar:
 left_bottom_color_bar = ColorBar(
     colors=[
         # This is just a sample palette, it will be changed on visualization call.
-        (0.0, 0.0, 1.0),  # blue
-        (0.0, 1.0, 1.0),  # cyan
-        (1.0, 1.0, 0.0),  # yellow
-        (1.0, 0.0, 0.0),  # red
+        (0.0, 0.0, 0.6, 1.0),   # coldest - deep blue
+        (0.0, 0.8, 0.8, 1.0),   # cool - cyan
+        (1.0, 0.9, 0.0, 1.0),   # warm - yellow
+        (0.8, 0.0, 0.0, 1.0),   # hottest - red
     ],
     value_range=(-10.0, 50.0),
     position=(40, 30),

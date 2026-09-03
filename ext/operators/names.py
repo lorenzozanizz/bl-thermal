@@ -42,5 +42,8 @@ class Labels(Enum):
     VISUALIZE_TEMPERATURE    = "thermal.visualize_temperature"
     # ( Sets the false-colour display span to the range of the baked field )
     FIT_DISPLAY_SPAN         = "thermal.fit_display_span"
-
+    # ( Visualize the left-bottom color bar )
+    SHOW_COLOR_BAR           = "thermal.show_color_bar"
+    # ( Hide the left-bottom color bar )
+    HIDE_COLOR_BAR           = "thermal.hide_color_bar"
 

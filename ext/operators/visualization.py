@@ -18,6 +18,7 @@ from ..thermal_core.contracts import ShadingType
 from ..thermal_core.temperature import Conversions, TempUnit
 from ..shaders.registry import ShaderRegistry
 
+from ..ui.color_bar_gpu import left_bottom_color_bar
 
 
 class VisualizeTemperatureOperator(Operator):
@@ -169,8 +170,28 @@ class FitDisplaySpanOperator(Operator):
         ]
 
 
-class ShowColorBarOperator:
-    pass
+class ShowColorBarOperator(Operator):
+    bl_idname = Labels.SHOW_COLOR_BAR.value
+    bl_label = "Show Color Bar"
+    bl_description = (
+        "Show the currently hidden color bar, adapting to the visualization range"
+    )
+    def execute(self, context):
+        settings = context.scene.thermal_render
 
-class HideColorBarOperator:
-    pass
+        left_bottom_color_bar.show()
+        left_bottom_color_bar.update(value_range=(
+            settings.span_min,
+            settings.span_max
+        ))
+        return {'FINISHED'}
+
+class HideColorBarOperator(Operator):
+    bl_idname = Labels.HIDE_COLOR_BAR.value
+    bl_label = "Hide Color Bar"
+    bl_description = (
+        "Hide the currently displayed color bar"
+    )
+    def execute(self, context):
+        left_bottom_color_bar.hide()
+        return {'FINISHED'}
