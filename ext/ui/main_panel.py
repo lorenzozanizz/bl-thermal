@@ -369,3 +369,6 @@ class InfoPanel(Panel):
         op.url = REPO_URL
         op = row.operator(Labels.OPEN_URL.value, text="Documentation", icon='FILE_FOLDER')
         op.url = DOCU_URL
+
+class PropagatePanel(Panel):
+    pass

@@ -8,6 +8,9 @@ if "bpy" not in sys.modules:
     bpy_types = types.ModuleType("bpy.types")
     bpy_props = types.ModuleType("bpy.props")
     bpy_utils = types.ModuleType("bpy.utils")
+    gpu_extras_batch = types.ModuleType("gpu_extras.batch")
+    gpu = types.ModuleType("gpu")
+    gpu_shader = types.ModuleType("gpu.shader")
 
     class PropertyGroup:
         pass
@@ -62,6 +65,17 @@ if "bpy" not in sys.modules:
     def _nop_property(*args, **kwargs):
         return None
 
+    def _batch_for_shader(*args, **kwargs):
+        pass
+
+    def _from_builtin(*args, **kwargs):
+        pass
+
+    for name in ():
+        setattr(gpu_extras_batch, name, _nop_property)
+
+    gpu_extras_batch.batch_for_shader = _batch_for_shader
+
     for name in ("PointerProperty", "StringProperty", "BoolProperty",
                  "IntProperty", "FloatProperty", "EnumProperty",
                  "CollectionProperty"):
@@ -69,15 +83,21 @@ if "bpy" not in sys.modules:
 
     bpy_utils.register_class = lambda cls: None
     bpy_utils.unregister_class = lambda cls: None
+    gpu_shader.from_builtin = _from_builtin
 
     bpy.types = bpy_types
     bpy.props = bpy_props
     bpy.utils = bpy_utils
 
+    gpu.shader = gpu_shader
+
     sys.modules["bpy"] = bpy
     sys.modules["bpy.types"] = bpy_types
     sys.modules["bpy.props"] = bpy_props
     sys.modules["bpy.utils"] = bpy_utils
+    sys.modules["gpu_extras.batch"] = gpu_extras_batch
+    sys.modules["gpu.shader"] = gpu_shader
+    sys.modules["gpu"] = gpu
 
 def foo():
     pass
