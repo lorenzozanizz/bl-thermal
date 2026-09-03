@@ -10,6 +10,7 @@ if "bpy" not in sys.modules:
     bpy_utils = types.ModuleType("bpy.utils")
     gpu_extras_batch = types.ModuleType("gpu_extras.batch")
     gpu = types.ModuleType("gpu")
+    blf = types.ModuleType("blf")
     gpu_shader = types.ModuleType("gpu.shader")
 
     class PropertyGroup:
@@ -80,6 +81,11 @@ if "bpy" not in sys.modules:
                  "IntProperty", "FloatProperty", "EnumProperty",
                  "CollectionProperty"):
         setattr(bpy_props, name, _nop_property)
+
+    blf.size = lambda *args, **kwargs: None
+    blf.position = lambda *args, **kwargs: None
+    blf.color = lambda *args, **kwargs: None
+    blf.draw = lambda *args, **kwargs: None
 
     bpy_utils.register_class = lambda cls: None
     bpy_utils.unregister_class = lambda cls: None
