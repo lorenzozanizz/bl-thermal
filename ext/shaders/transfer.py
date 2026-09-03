@@ -112,6 +112,8 @@ class RBFOTransfer(TransferDescriptor):
     property_group = RBFOTransferProperties
     attr_name = "rbfo"
 
+    MAX_EXPONENT_ARGUMENT = 80
+
     @staticmethod
     def draw(layout: UILayout, props: RBFOTransferProperties) -> None:
         column = layout.column(align=True)

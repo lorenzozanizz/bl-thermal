@@ -11,6 +11,8 @@ imaging is handled downstream in the shader.
     visualization operator normalize a false-colour palette in signal
     space rather than temperature space.
 
+Both must agree. Any change to an evaluator here has a matching change in the
+node builder there.
 """
 
 from abc import ABC, abstractmethod
@@ -54,8 +56,6 @@ class TransferSpec(ABC):
         only valid or feasible for a certain range of temperatures in standard
         conditions, and fail otherwise.
         """
-        # Use the minimum Kelvin of c.a. 1 kelvin, reasonably nothing below
-        # this
         return MIN_TRANSFER_TEMPERATURE_K, None
 
     def validate_over(self, temperatures_k: np.ndarray) -> None:
@@ -63,10 +63,7 @@ class TransferSpec(ABC):
         outside valid_temperature_range().
 
         :param temperatures_k: per-vertex Kelvin values, any shape.
-        :raises ValueError: if any temperature in temperatures_k falls outside the range
         """
-        # Ensure that the observed temperatures lie within the valid temperature range
-        # for the transfer specification.
         low, high = self.valid_temperature_range()
         observed_min = float(np.min(temperatures_k))
         observed_max = float(np.max(temperatures_k))
@@ -86,6 +83,9 @@ class TransferSpec(ABC):
     def invert(self, signal: np.ndarray) -> np.ndarray:
         """ Recover Kelvin from a signal value, the inverse of evaluating this
         spec.
+
+        Optional. Needed to label a false-colour legend in physical units once
+        the palette has been normalized in signal space; not needed to render.
 
         :raises NotImplementedError: this spec has no closed-form inverse.
         """
@@ -115,7 +115,6 @@ class RBFOTransferSpec(TransferSpec):
         narrow.
     :param o: additive detector offset (dark signal).
     """
-
     r: float
     b: float
     f: float
@@ -242,7 +241,7 @@ class TransferRegistry:
         return spec_type in cls._REGISTRY
 
 
-def compute_signal_range(spec: TransferSpec, temperatures_k: np.ndarray) -> Tuple[float, float]:
+def signal_range(spec: TransferSpec, temperatures_k: np.ndarray) -> Tuple[float, float]:
     """ The (min, max) signal produced by spec across temperatures_k.
 
     A degenerate range (a scene at one uniform temperature) is returned
@@ -255,16 +254,33 @@ def compute_signal_range(spec: TransferSpec, temperatures_k: np.ndarray) -> Tupl
     return float(np.min(signal)), float(np.max(signal))
 
 
+def signal_span(
+    spec: TransferSpec, span_min_k: float, span_max_k: float
+) -> Tuple[float, float]:
+    """ Convert a Kelvin display span into the corresponding signal span.
+
+    Two scalar evaluations, not a survey of the scene: the transfer is
+    monotonic, so the endpoints map to the endpoints.
+
+    :raises ValueError: the span is empty or inverted.
+    """
+    if span_max_k <= span_min_k:
+        raise ValueError(
+            f"Display span is empty: min ({span_min_k}K) must be below max "
+            f"({span_max_k}K)."
+        )
+    low, high = TransferRegistry.evaluate(spec, np.array([span_min_k, span_max_k]))
+    return float(low), float(high)
+
+
 @TransferRegistry.register(RBFOTransferSpec)
-def compute_r_b_f_o(spec: RBFOTransferSpec, temperatures_k: np.ndarray) -> np.ndarray:
+def _evaluate_rbfo(spec: RBFOTransferSpec, temperatures_k: np.ndarray) -> np.ndarray:
     """ S = R / (exp(B/T) - F) + O, evaluated elementwise.
 
     Overflow is expected and handled implicitly by the fact that 1/inf = 0.
     Letting it happen is cheaper and better-behaved than branching around i
     t, so the warning is suppressed and the result used directly.
     """
-    # Ignore possible divide by zero errors, which shouldnt really be possible
-    # if the temperature range check is enabled anyway
     with np.errstate(over='ignore', divide='ignore', invalid='ignore'):
         denominator = np.exp(spec.b / temperatures_k) - spec.f
         signal = spec.r / denominator + spec.o

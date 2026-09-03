@@ -1,9 +1,7 @@
-from .main_panel import MainPanel, InfoPanel, CollectionSpecPanel
+from .main_panel import MainPanel, ThermographyPanel, InfoPanel, CollectionSpecPanel, BakePanel
 from .properties import (
     data_properties,
-    scene_properties
-)
-from .properties import (
+    scene_properties,
     SceneIgnoreRules,
     UniformTempProperties,
     WeightPaintedTempProperties,
@@ -13,6 +11,7 @@ from .properties import (
 )
 
 properties = data_properties + scene_properties
+
 
 # PropertyGroup classes referenced via PointerProperty (Uniform/WeightPainted) must be
 # registered before the class that points to them (InitStrategyProperties).
@@ -24,6 +23,8 @@ classes = (
     ThermalProperties,
     ThermalRenderSettings,
     MainPanel,
+    ThermographyPanel,
+    BakePanel,
     CollectionSpecPanel,
     InfoPanel,
 )

@@ -4,14 +4,19 @@ Panel classes and composable UISections for the extension's UI.
 """
 
 from abc import abstractmethod, ABCMeta
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable, List, Optional
 
 from bpy.types import Panel, Context, ID, Object, Collection
 
 from ..operators.names import Labels
 from ..constants import *
-from ..thermal_core.contracts import InitType, SpecScope
+from ..thermal_core.contracts import (
+    InitType, SpecScope, ShadingType, TransferType, TerminalMode,
+)
+from ..shaders.registry import ShaderRegistry
+from ..shaders.transfer import TransferNodeRegistry
 from .init_registry import InitStrategyRegistry
+from .text_wrap_utils import WrapWidget
 from .resolution import SpecsResolver, SpecResolutionError
 
 
@@ -49,7 +54,7 @@ class BakeSection(UISection):
         return ready, total_mesh
 
     def draw(self, context: Context, layout) -> None:
-        ready, total_mesh = 1, 2# self._count_ready(context)
+        ready, total_mesh = self._count_ready(context)
 
         if total_mesh == 0:
             layout.label(text="No mesh objects in scene", icon='INFO')
@@ -106,19 +111,137 @@ class SpecSection(UISection):
         descriptor.draw(layout, sub_props)
 
 
-class RenderSection(UISection):
-    """ Triggers VisualizeTemperatureOperator
-    which colors every baked object by its TEMPERATURE_ATTR_NAME attribute
-    via a shared material.
+class ShadingSection(UISection):
+    """ Shading path, radiometric transfer, and the transfer's parameters.
+
+    Dispatches through ShaderRegistry and TransferNodeRegistry the same way
+    SpecSection dispatches through InitStrategyRegistry, so an unimplemented
+    path reports itself rather than being hidden.
     """
+
+    def draw(self, context: Context, layout) -> None:
+        settings = context.scene.thermal_render
+        layout.prop(settings, "shading_type")
+
+        shading_type = ShadingType[settings.shading_type]
+        if not ShaderRegistry.is_implemented(shading_type):
+            layout.label(
+                text=f'"{shading_type.value}" is not implemented yet', icon='ERROR',
+            )
+            return
+
+        if not shading_type.uses_transfer():
+            layout.label(text="Emits baked temperature directly", icon='INFO')
+            return
+
+        layout.prop(settings, "transfer_type")
+
+        transfer_type = TransferType[settings.transfer_type]
+        try:
+            descriptor = TransferNodeRegistry.get(transfer_type)
+        except NotImplementedError:
+            layout.label(
+                text=f'"{transfer_type.value}" is not implemented yet', icon='ERROR',
+            )
+            return
+
+        props = getattr(settings, descriptor.attr_name)
+        descriptor.draw(layout, props)
+
+        # Surface a bad parameter here rather than letting the build fail.
+        try:
+            descriptor.build_spec(props).validate()
+        except ValueError as error:
+            WrapWidget.draw(layout, context, str(error), 'ERROR')
+
+
+class SurfaceSection(UISection):
+    """ Emissivity and the environment it mixes against.
+
+    Hidden for shading paths with no transfer, where the two have no meaning.
+    """
+
+    # Below this, the surface reads mostly as a mirror of its surroundings.
+    _MIRROR_THRESHOLD = 0.5
+
+    def draw(self, context: Context, layout) -> None:
+        settings = context.scene.thermal_render
+        if not ShadingType[settings.shading_type].uses_transfer():
+            layout.label(text="Not used by this shading path", icon='INFO')
+            return
+
+        layout.prop(settings, "emissivity", slider=True)
+
+        row = layout.row(align=True)
+        row.prop(settings, "reflected_temperature")
+        row.prop(settings, "reflected_unit", text="")
+
+        if settings.emissivity < SurfaceSection._MIRROR_THRESHOLD:
+            WrapWidget.draw(
+                layout, context,
+                "Mostly reflective: the image will show the environment "
+                "more than the object.",
+                icon='INFO',
+            )
+
+
+class OutputSection(UISection):
+    """ What the shader emits, and the display span when it emits colour. """
+
+    def draw(self, context: Context, layout) -> None:
+        settings = context.scene.thermal_render
+        layout.prop(settings, "terminal_mode")
+
+        if TerminalMode[settings.terminal_mode] is TerminalMode.FALSE_COLOR:
+            OutputSection._draw_span(settings, layout, context)
+        else:
+            OutputSection._draw_raw_notes(context, layout)
+
+    @staticmethod
+    def _draw_span(settings, layout, context) -> None:
+        row = layout.row(align=True)
+        row.prop(settings, "span_min")
+        row.prop(settings, "span_max")
+        layout.prop(settings, "span_unit")
+
+        layout.operator(
+            Labels.FIT_DISPLAY_SPAN.value, text="Fit Span to Scene", icon='ARROW_LEFTRIGHT',
+        )
+
+        if settings.span_max <= settings.span_min:
+            WrapWidget.draw(layout, context, "Span minimum must be below its maximum.")
+
+    @staticmethod
+    def _draw_raw_notes(context: Context, layout) -> None:
+        WrapWidget.draw(
+            layout, context, "Linear signal. Invertible back to temperature.", icon='INFO',
+        )
+        # AgX and Filmic tone-map the result, which destroys the measurement
+        # in the viewport and in any 8-bit output.
+        if context.scene.view_settings.view_transform != 'Standard':
+            WrapWidget.draw(
+                layout, context,
+                "Set the view transform to Standard, in Render Properties > "
+                "Color Management, or the values will be tone-mapped.",
+                icon='ERROR',
+            )
+
+
+class RenderSection(UISection):
+    """ Builds the thermal material and assigns it to every baked object. """
 
     def draw(self, context: Context, layout) -> None:
         layout.operator(
             Labels.VISUALIZE_TEMPERATURE.value,
-            text="Visualize Temperature",
+            text="Build Thermal Material",
             icon='MATERIAL',
         )
-        layout.label(text="View in Material Preview or Rendered shading", icon='INFO')
+        WrapWidget.draw(
+            layout, context,
+            "Rebuild after changing any setting above. "
+            "View in Material Preview or Rendered shading.",
+            icon='INFO',
+        )
 
 
 class CentralPanel(UISection):
@@ -134,10 +257,11 @@ class CentralPanel(UISection):
         for section in self._sections:
             section.draw(context, layout.box())
 
+
 class MainPanel(Panel):
     """  """
     bl_idname = "THERMAL_PT_main"
-    bl_label = "Thermal"
+    bl_label = "Object"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = MAIN_PANEL_NAME
@@ -145,7 +269,44 @@ class MainPanel(Panel):
     def draw(self, context: Context) -> None:
         panel = CentralPanel(sections=[
             SpecSection(scope=SpecScope.OBJECT, get_target=lambda ctx: ctx.object),
+        ])
+        panel.draw(context, self.layout)
+
+class BakePanel(Panel):
+    """
+
+    """
+    """  """
+    bl_idname = "THERMAL_PT_bake"
+    bl_label = "Baking"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = MAIN_PANEL_NAME
+
+    def draw(self, context: Context) -> None:
+        panel = CentralPanel(sections=[
             BakeSection(),
+        ])
+        panel.draw(context, self.layout)
+
+class ThermographyPanel(Panel):
+    """ Shading path, radiometry and output settings.
+
+    Separate from MainPanel because these are scene-wide render settings,
+    while MainPanel's contents follow the active object.
+    """
+    bl_idname = "THERMAL_PT_thermography"
+    bl_label = "Thermography"
+    bl_category = MAIN_PANEL_NAME
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_order = 2
+
+    def draw(self, context: Context) -> None:
+        panel = CentralPanel(sections=[
+            ShadingSection(),
+            SurfaceSection(),
+            OutputSection(),
             RenderSection(),
         ])
         panel.draw(context, self.layout)

@@ -1,10 +1,9 @@
 """
-Bpy-facing orchestration for visualizing the baked per-vertex temperature
-attribute as material color.
+Bpy-facing orchestration for building the thermal material and assigning it to
+every baked object.
 
-Builds one shared material, scaled to the combined min/max across every
-baked object, and assigns it to each so the color scale is comparable
-across the entire scene.
+The shading path is resolved from the scene's ThermalRenderSettings, so this
+operator holds no knowledge of how any particular material is built.
 """
 
 from typing import List, Optional
@@ -15,7 +14,10 @@ from bpy.types import Operator, Object, Material
 
 from .names import Labels
 from ..constants import TEMPERATURE_ATTR_NAME, TEMPERATURE_MATERIAL_NAME
-from ..shaders.visualize import build_temperature_node_graph
+from ..thermal_core.contracts import ShadingType
+from ..thermal_core.temperature import Conversions, TempUnit
+from ..shaders.registry import ShaderRegistry
+
 
 
 class VisualizeTemperatureOperator(Operator):
@@ -38,31 +40,24 @@ class VisualizeTemperatureOperator(Operator):
             self.report({'WARNING'}, "No baked temperature data found, run Bake first")
             return {'CANCELLED'}
 
-        combined = np.concatenate(
-            [VisualizeTemperatureOperator._read_temperature_values(obj) for obj in objects_iter]
-        )
-        min_value = float(combined.min())
-        max_value = float(combined.max())
+        settings = context.scene.thermal_render
+        shading_type = ShadingType[settings.shading_type]
 
-        if abs(min_value - max_value) < 1e-3:
-            # Degenerate range. Pad symmetrically so it still resolves to one
-            # consistent mid-ramp color instead of undefined behaviour.
-            min_value -= 0.5
-            max_value += 0.5
-
-        material = VisualizeTemperatureOperator._get_or_create_material()
-        # Create the material corresponding to the node graph which extracts the temperature
-        # fields and maps it onto a color ramp.
-        build_temperature_node_graph(material, TEMPERATURE_ATTR_NAME, min_value, max_value)
+        try:
+            descriptor = ShaderRegistry.get(shading_type)
+            material = VisualizeTemperatureOperator._get_or_create_material()
+            descriptor.build(material, settings)
+        except (NotImplementedError, ValueError) as error:
+            self.report({'ERROR'}, str(error))
+            return {'CANCELLED'}
 
         for obj in objects_iter:
             VisualizeTemperatureOperator._assign_material(obj, material)
 
         self.report(
             {'INFO'},
-            f"Visualized {len(objects_iter)} object(s), range "
-            f"{min_value:.1f}-{max_value:.1f}. Switch viewport shading to "
-            f"Material Preview or Rendered to see it."
+            f"Built '{shading_type.value}' on {len(objects_iter)} object(s). Switch "
+            f"viewport shading to Material Preview or Rendered to see it."
         )
         return {'FINISHED'}
 
@@ -104,3 +99,74 @@ class VisualizeTemperatureOperator(Operator):
             obj.data.materials.append(material)
         else:
             obj.data.materials[0] = material
+
+
+
+class FitDisplaySpanOperator(Operator):
+    """ Sets the display span to the range of the baked temperature field.
+
+    Equivalent to a camera's automatic gain: convenient for finding something,
+    useless for comparing two images. Affects false colour only - a raw render
+    is unchanged either way.
+    """
+    bl_idname = Labels.FIT_DISPLAY_SPAN.value
+    bl_label = "Fit Span to Scene"
+    bl_description = (
+        "Set the display span to the coldest and hottest baked temperatures "
+        "in the scene. Display only"
+    )
+    bl_options = {'REGISTER', 'UNDO'}
+
+    # Half-width applied when every baked value is identical, so the span stays
+    # non-empty.
+    _DEGENERATE_PAD_K = 0.5
+
+    def execute(self, context):
+        objects = FitDisplaySpanOperator._baked_mesh_objects(context)
+        if not objects:
+            self.report({'WARNING'}, "No baked temperature data found, run Bake first")
+            return {'CANCELLED'}
+
+        combined = np.concatenate([FitDisplaySpanOperator._read_temperature_values(obj) for obj in objects])
+        min_k, max_k = float(combined.min()), float(combined.max())
+
+        if max_k - min_k < 1e-3:
+            min_k -= FitDisplaySpanOperator._DEGENERATE_PAD_K
+            max_k += FitDisplaySpanOperator._DEGENERATE_PAD_K
+
+        settings = context.scene.thermal_render
+        unit = TempUnit[settings.span_unit]
+        settings.span_min = Conversions.from_kelvin(min_k, unit)
+        settings.span_max = Conversions.from_kelvin(max_k, unit)
+
+        self.report(
+            {'INFO'},
+            f"Span set to {settings.span_min:.1f} - {settings.span_max:.1f} "
+            f"{unit.value}. Rebuild the material to apply."
+        )
+        return {'FINISHED'}
+
+    @staticmethod
+    def _read_temperature_values(obj: Object) -> Optional[np.ndarray]:
+        """ Reads TEMPERATURE_ATTR_NAME off obj's mesh, or None if unbaked. """
+        attribute = obj.data.attributes.get(TEMPERATURE_ATTR_NAME)
+        if attribute is None:
+            return None
+        values = np.empty(len(obj.data.vertices), dtype=np.float64)
+        attribute.data.foreach_get('value', values)
+        return values
+
+    @staticmethod
+    def _baked_mesh_objects(context) -> List[Object]:
+        """ Every mesh object in the scene carrying baked temperature data. """
+        return [
+            obj for obj in context.scene.objects
+            if obj.type == 'MESH' and obj.data.attributes.get(TEMPERATURE_ATTR_NAME) is not None
+        ]
+
+
+class ShowColorBarOperator:
+    pass
+
+class HideColorBarOperator:
+    pass

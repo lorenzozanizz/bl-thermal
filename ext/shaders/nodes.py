@@ -15,14 +15,15 @@ Operand = Union[float, NodeSocket]
 
 class TreeUtils:
 
+    @staticmethod
     def feed(tree: ShaderNodeTree, socket_input, operand: Operand) -> None:
-        """ Drive a node input, either by linking a socket or settin        g a constant. """
+        """ Drive a node input, either by linking a socket or setting a constant. """
         if isinstance(operand, NodeSocket):
             tree.links.new(operand, socket_input)
         else:
             socket_input.default_value = operand
 
-
+    @staticmethod
     def new_math(
         tree: ShaderNodeTree,
         operation: str,
@@ -47,7 +48,7 @@ class TreeUtils:
             TreeUtils.feed(tree, node.inputs[1], second)
         return node.outputs[0]
 
-
+    @staticmethod
     def new_value(
         tree: ShaderNodeTree, value: float, location: Tuple[float, float], label: str = "",
     ) -> NodeSocket:
@@ -57,6 +58,18 @@ class TreeUtils:
         node.label = label
         node.outputs[0].default_value = value
         return node.outputs[0]
+
+    @staticmethod
+    def new_attribute(
+        tree: ShaderNodeTree, attribute_name: str, location: Tuple[float, float],
+    ) -> NodeSocket:
+        """ Add a geometry Attribute node and return its scalar output. """
+        node: Node = tree.nodes.new('ShaderNodeAttribute')
+        node.attribute_type = 'GEOMETRY'
+        node.attribute_name = attribute_name
+        node.location = location
+        node.label = attribute_name
+        return node.outputs['Fac']
 
 
 class MathCompositor:

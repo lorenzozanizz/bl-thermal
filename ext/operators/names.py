@@ -40,5 +40,7 @@ class Labels(Enum):
     # ( Builds/updates the shared "Thermal Visualization" material and
     #   assigns it to every baked mesh object. )
     VISUALIZE_TEMPERATURE    = "thermal.visualize_temperature"
+    # ( Sets the false-colour display span to the range of the baked field )
+    FIT_DISPLAY_SPAN         = "thermal.fit_display_span"
 
 

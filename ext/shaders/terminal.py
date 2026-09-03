@@ -21,36 +21,18 @@ itself, and destroys the recoverability of the underlying measurement.
 
 from typing import Tuple
 
-import numpy as np
 from bpy.types import Node, NodeSocket, PropertyGroup, ShaderNodeTree
 
-from .nodes import MathCompositor
 from ..thermal_core.contracts import TerminalMode
-from ..thermal_core.radiometry import TransferRegistry, TransferSpec
+from .nodes import MathCompositor
 from .palette import apply_thermal_palette
-
-
-def signal_span(spec: TransferSpec, span_min_k: float, span_max_k: float) -> Tuple[float, float]:
-    """ Convert a Kelvin display span into the corresponding signal span.
-
-    :raises ValueError: the span is empty or inverted
-    """
-    if span_max_k <= span_min_k:
-        raise ValueError(
-            f"Display span is empty: min ({span_min_k}K) must be below max "
-            f"({span_max_k}K)."
-        )
-    low, high = TransferRegistry.evaluate(spec, np.array([span_min_k, span_max_k]))
-    # (This just computes the interval of values in the signal scale and not in the
-    # temperature scale, assuming everytihng is monotonous etc...
-    return float(low), float(high)
 
 
 def build_terminal(
     tree: ShaderNodeTree,
     signal_socket: NodeSocket,
     settings: PropertyGroup,
-    spec: TransferSpec,
+    display_span: Tuple[float, float],
     location: Tuple[float, float],
 ) -> None:
     """ Append the final material stage and connect it to a new Material Output.
@@ -62,11 +44,11 @@ def build_terminal(
     """
     mode = TerminalMode[settings.terminal_mode]
     x, y = location
-    stride_x, _ = MathCompositor.strides()
+    x_stride, _ = MathCompositor.strides()
 
     if mode is TerminalMode.FALSE_COLOR:
-        shaded = _build_false_color(tree, signal_socket, settings, spec, (x, y))
-        x += 2 * stride_x
+        shaded = _build_false_color(tree, signal_socket, display_span, (x, y))
+        x += 2 * x_stride
     else:
         shaded = signal_socket
 
@@ -79,19 +61,18 @@ def build_terminal(
     tree.links.new(shaded, emission.inputs['Color'])
 
     output: Node = tree.nodes.new('ShaderNodeOutputMaterial')
-    output.location = (x + stride_x, y)
+    output.location = (x + x_stride, y)
     tree.links.new(emission.outputs['Emission'], output.inputs['Surface'])
 
 
 def _build_false_color(
     tree: ShaderNodeTree,
     signal_socket: NodeSocket,
-    settings: PropertyGroup,
-    spec: TransferSpec,
+    display_span: Tuple[float, float],
     location: Tuple[float, float],
 ) -> NodeSocket:
     """ Map the signal onto the display span and through the palette. """
-    low, high = signal_span(spec, settings.span_min_k(), settings.span_max_k())
+    low, high = display_span
     x, y = location
     stride_x, _ = MathCompositor.strides()
 
