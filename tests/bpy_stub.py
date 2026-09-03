@@ -104,6 +104,7 @@ if "bpy" not in sys.modules:
     sys.modules["gpu_extras.batch"] = gpu_extras_batch
     sys.modules["gpu.shader"] = gpu_shader
     sys.modules["gpu"] = gpu
+    sys.modules["blf"] = blf
 
 def foo():
     pass
