@@ -17,3 +17,10 @@ TEMPERATURE_ATTR_DOMAIN = 'POINT'
 # ( Name of the single shared material VisualizeTemperatureOperator builds
 #   and assigns to every baked object )
 TEMPERATURE_MATERIAL_NAME = "Thermal Visualization"
+
+DEFAULT_HEAT_PALETTE = (
+    (0.0, 0.0, 0.6, 1.0),  # coldest: deep blue
+    (0.0, 0.8, 0.8, 1.0),  # cool: cyan
+    (1.0, 0.9, 0.0, 1.0),  # warm: yellow
+    (0.8, 0.0, 0.0, 1.0),  # hottest: red
+)

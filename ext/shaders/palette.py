@@ -5,14 +5,16 @@ Display only.
 
 from bpy.types import ColorRamp
 
+from ..constants import DEFAULT_HEAT_PALETTE
+
 
 def apply_thermal_palette(color_ramp: ColorRamp) -> None:
     """ Overwrites color_ramp's stops with a cold(blue)->hot(red) palette """
     stops = (
-        (0.00, (0.0, 0.0, 0.6, 1.0)),   # coldest: deep blue
-        (0.33, (0.0, 0.8, 0.8, 1.0)),   # cool: cyan
-        (0.66, (1.0, 0.9, 0.0, 1.0)),   # warm: yellow
-        (1.00, (0.8, 0.0, 0.0, 1.0)),   # hottest: red
+        (0.00, DEFAULT_HEAT_PALETTE[0]),   # coldest: deep blue
+        (0.33, DEFAULT_HEAT_PALETTE[1]),   # cool: cyan
+        (0.66, DEFAULT_HEAT_PALETTE[2]),   # warm: yellow
+        (1.00, DEFAULT_HEAT_PALETTE[3]),   # hottest: red
     )
     elements = color_ramp.elements
     elements[0].position, elements[0].color = stops[0]

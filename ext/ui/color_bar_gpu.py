@@ -6,6 +6,8 @@ import math
 
 from gpu_extras.batch import batch_for_shader
 
+from ..constants import DEFAULT_HEAT_PALETTE
+
 
 class ColorBar:
     """ Fixed 2D colorbar overlay for a Blender 3D Viewport.
@@ -375,11 +377,7 @@ class ColorBar:
 # operator calls.
 left_bottom_color_bar = ColorBar(
     colors=[
-        # This is just a sample palette, it will be changed on visualization call.
-        (0.0, 0.0, 0.6, 1.0),   # coldest - deep blue
-        (0.0, 0.8, 0.8, 1.0),   # cool - cyan
-        (1.0, 0.9, 0.0, 1.0),   # warm - yellow
-        (0.8, 0.0, 0.0, 1.0),   # hottest - red
+        *DEFAULT_HEAT_PALETTE
     ],
     value_range=(-10.0, 50.0),
     position=(40, 30),
