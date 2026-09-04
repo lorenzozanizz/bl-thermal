@@ -1,10 +1,10 @@
 from .baking import BakeTemperatureOperator
-from .visualization import (VisualizeTemperatureOperator, FitDisplaySpanOperator,
+from .visualization import (VisualizeShaderOperator, FitDisplaySpanOperator,
                             ShowColorBarOperator, HideColorBarOperator)
 
 classes = (
     BakeTemperatureOperator,
-    VisualizeTemperatureOperator,
+    VisualizeShaderOperator,
     FitDisplaySpanOperator,
     HideColorBarOperator,
     ShowColorBarOperator,

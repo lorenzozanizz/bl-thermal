@@ -68,7 +68,7 @@ class ShadingType(Enum):
     RAY_OSL_SHADER = "Ray OSL Shader"
 
     # Use nodes to perform a scalar mapping, no ray tracing
-    NODE_SHADER = "Node Shader"
+    PURE_EMITTANCE_NODE = "Node Pure Emittance"
     # Try to attempt a numpy per-pixel emittance computation
     NUMPY_SHADER = "NumPy Shader"
 
@@ -94,15 +94,6 @@ class TerminalMode(Enum):
     FALSE_COLOR = "False Color"
 
 
-class ThermographyType(Enum):
-    """
-
-    """
-    TEMPERATURE = "Temperature"
-    RADIANCE = "Radiance"
-    RAYTRACE = "Raytrace"
-
-
 class TransferType(Enum):
     """ Radiometric transfer function used to turn a surface temperature into
     a sensor signal.
@@ -125,6 +116,14 @@ class TransferType(Enum):
     # Planck's law multiplied by the sensor's spectral response and
     # integrated across the band, precomputed into a lookup table.
     PLANCK_LUT = "Band-integrated Planck"
+
+    # from reference \cite{waldermar_et_dudzik}
+    #
+    WIEN = "Wien"
+
+    # from reference \cite{waldermar_et_dudzik}
+    #
+    RAYLEIGH_JEANS = "Rayleigh-Jeans"
 
     # M = eps*sigma*T^4. Total radiated power across all wavelengths, from
     # reference \cite{waldermar_et_dudzik}

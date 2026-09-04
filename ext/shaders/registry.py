@@ -97,12 +97,12 @@ class TemperatureShader(ShaderDescriptor):
         )
 
 
-@ShaderRegistry.register(ShadingType.NODE_SHADER)
+@ShaderRegistry.register(ShadingType.PURE_EMITTANCE_NODE)
 class NodeShader(ShaderDescriptor):
     """ Radiometric transfer plus emissivity mix, evaluated as Cycles/EEVEE
     math nodes. No light transport: the environment enters as a constant.
     """
-    shading_type = ShadingType.NODE_SHADER
+    shading_type = ShadingType.PURE_EMITTANCE_NODE
 
     @staticmethod
     def build(material: Material, settings: PropertyGroup) -> None:

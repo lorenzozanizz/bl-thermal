@@ -21,7 +21,7 @@ from ..shaders.registry import ShaderRegistry
 from ..ui.color_bar_gpu import left_bottom_color_bar
 
 
-class VisualizeTemperatureOperator(Operator):
+class VisualizeShaderOperator(Operator):
     """ Builds/updates the single shared TEMPERATURE_MATERIAL_NAME material
     scaled to the min/max across every baked mesh object's TEMPERATURE_ATTR_NAME values,
     and assigns it to material slot 0 on each of those objects.
@@ -36,7 +36,7 @@ class VisualizeTemperatureOperator(Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        objects_iter = VisualizeTemperatureOperator._iter_baked_mesh_objects(context)
+        objects_iter = VisualizeShaderOperator._iter_baked_mesh_objects(context)
         if not objects_iter:
             self.report({'WARNING'}, "No baked temperature data found, run Bake first")
             return {'CANCELLED'}
@@ -46,7 +46,7 @@ class VisualizeTemperatureOperator(Operator):
 
         try:
             descriptor = ShaderRegistry.get(shading_type)
-            material = VisualizeTemperatureOperator._get_or_create_material()
+            material = VisualizeShaderOperator._get_or_create_material()
             descriptor.build(material, settings)
         except (NotImplementedError, ValueError) as error:
             self.report({'ERROR'}, str(error))
@@ -55,8 +55,7 @@ class VisualizeTemperatureOperator(Operator):
         # For now, override the current material to display the baked thermal
         # map over the scene.
         for obj in objects_iter:
-            VisualizeTemperatureOperator._assign_material(obj, material)
-
+            VisualizeShaderOperator._assign_material(obj, material)
 
 
         self.report(
