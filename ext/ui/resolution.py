@@ -78,16 +78,16 @@ class InvalidCollectionSpecError(SpecResolutionError):
 class SpecsResolver:
 
     @staticmethod
-    def _build_spec_for(props_owner, init_type: InitType) -> TempInitSpec:
+    def _build_spec_for(object, init_type: InitType) -> TempInitSpec:
         """ Look up the strategy descriptor for init_type and build a spec
         from the matching sub-PropertyGroup on props_owner.thermal_init.
 
-        :param props_owner: The object which owns the properties
+        :param object: The object which owns the properties
         :param init_type: The type of initializer for the object
         """
         descriptor = InitStrategyRegistry.get_strategy(init_type)
         # raises NotImplementedError for GRADIENT/AMBIENT
-        sub_props = getattr(props_owner.thermal_init, descriptor.attr_name)
+        sub_props = getattr(object.thermal_init, descriptor.attr_name)
         return descriptor.build(sub_props)
 
     @staticmethod

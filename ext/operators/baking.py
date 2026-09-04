@@ -15,7 +15,6 @@ from ..constants import (
     TEMPERATURE_ATTR_NAME, TEMPERATURE_ATTR_TYPE, TEMPERATURE_ATTR_DOMAIN,
 )
 from ..thermal_core.baking import BakeInputs, BakeStrategyRegistry
-from ..thermal_core.specs import WeightPaintedTempSpec
 from ..ui.resolution import SpecsResolver, SpecResolutionError
 
 
@@ -52,6 +51,8 @@ class BakeTemperatureOperator(Operator):
     def execute(self, context):
         outcomes = [(obj, BakeTemperatureOperator._bake_one(obj)) for obj in context.scene.objects]
 
+        # The rest just verifies if any bake procedure has gone wrong, and warns the user
+        # accordingly
         any_baked = any(outcome is BakeOutcome.BAKED for _, outcome in outcomes)
         any_skipped_meaningfully = any(
             outcome not in (BakeOutcome.BAKED, BakeOutcome.SKIPPED_NOT_MESH)
