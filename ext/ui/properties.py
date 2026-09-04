@@ -51,6 +51,24 @@ class UniformTempProperties(PropertyGroup):
     )
 
 
+class AmbientTempProperties(PropertyGroup):
+    """ UI state for ObjectTempInitType.AMBIENT: a single scalar applied to
+    every point on every object in the scene (the surrounding air/environment).
+    """
+    value: FloatProperty(                                               # type: ignore
+        name="Temperature",
+        description="Ambient starting temperature applied to every point on every object",
+        default=293.15,  # 20C in Kelvin, stored/exposed per `unit` below
+        soft_min=0.0,
+    )
+    unit: EnumProperty(                                                 # type: ignore
+        name="Unit",
+        description="Display unit for the temperature value above",
+        items=[(u.name, u.value, "") for u in TempUnit],
+        default=TempUnit.CELSIUS.name,
+    )
+
+
 class WeightPaintedTempProperties(PropertyGroup):
     """ UI state for ObjectTempInitType.WEIGHT_PAINTED. Object-only - see
     ObjectTempInitType.allowed_for_scope() in thermal_core/contracts.py.
@@ -107,6 +125,7 @@ class InitStrategyProperties(PropertyGroup):
         items=_init_type_items,                                                 # type: ignore
     )
     uniform: PointerProperty(type=UniformTempProperties)                        # type: ignore
+    ambient: PointerProperty(type=AmbientTempProperties)                        # type: ignore
     weight_painted: PointerProperty(type=WeightPaintedTempProperties)           # type: ignore
 
 

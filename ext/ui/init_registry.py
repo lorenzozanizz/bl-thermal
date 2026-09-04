@@ -10,9 +10,9 @@ from abc import ABC, abstractmethod
 from bpy.types import PropertyGroup, UILayout, Object
 
 from ..thermal_core.contracts import InitType, SpecScope
-from ..thermal_core.specs import TempInitSpec, UniformTempSpec, WeightPaintedTempSpec
+from ..thermal_core.specs import TempInitSpec, AmbientTempSpec, UniformTempSpec, WeightPaintedTempSpec
 from ..thermal_core.temperature import TempUnit, Conversions
-from .properties import UniformTempProperties, WeightPaintedTempProperties
+from .properties import AmbientTempProperties, UniformTempProperties, WeightPaintedTempProperties
 
 
 class StrategyDescriptor(ABC):
@@ -99,6 +99,27 @@ class InitWeightUniform(StrategyDescriptor):
     def build(props: UniformTempProperties) -> UniformTempSpec:
         unit = TempUnit[props.unit]
         return UniformTempSpec(value_k=Conversions.to_kelvin(props.value, unit))
+
+
+@InitStrategyRegistry.register(init_type=InitType.AMBIENT)
+class InitAmbient(StrategyDescriptor):
+    """ AMBIENT is valid at both Object and Collection scope (see
+    InitType.allowed_for_scope) - a single environment temperature applied
+    to every point on every object that resolves to it. """
+
+    init_type = InitType.AMBIENT
+    property_group = AmbientTempProperties
+    attr_name = "ambient"
+
+    @staticmethod
+    def draw(layout: UILayout, props: AmbientTempProperties) -> None:
+        layout.prop(props, "value")
+        layout.prop(props, "unit")
+
+    @staticmethod
+    def build(props: AmbientTempProperties) -> AmbientTempSpec:
+        unit = TempUnit[props.unit]
+        return AmbientTempSpec(value_k=Conversions.to_kelvin(props.value, unit))
 
 
 @InitStrategyRegistry.register(init_type=InitType.WEIGHT_PAINTED)

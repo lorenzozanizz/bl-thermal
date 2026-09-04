@@ -15,7 +15,7 @@ from typing import Callable, Dict, Optional, Type
 
 import numpy as np
 
-from .specs import TempInitSpec, UniformTempSpec, WeightPaintedTempSpec
+from .specs import AmbientTempSpec, TempInitSpec, UniformTempSpec, WeightPaintedTempSpec
 
 
 @dataclass(frozen=True)
@@ -33,7 +33,7 @@ class BakeInputs:
 
 
 # Typing hint
-# A function which gets evaluated for a temperature initialziation
+# A function which gets evaluated for a temperature initialization
 # specification and produces the correct mesh temperature field
 EvaluateFn = Callable[[TempInitSpec, BakeInputs], np.ndarray]
 
@@ -109,6 +109,13 @@ class FalloffFunctions:
 @BakeStrategyRegistry.register(UniformTempSpec)
 def _evaluate_uniform(spec: UniformTempSpec, inputs: BakeInputs) -> np.ndarray:
     """ Every vertex gets the same value and vertex_group_weights is unused. """
+    return np.full(inputs.vertex_count, spec.value_k, dtype=np.float64)
+
+
+@BakeStrategyRegistry.register(AmbientTempSpec)
+def _evaluate_ambient(spec: AmbientTempSpec, inputs: BakeInputs) -> np.ndarray:
+    """ Every vertex on every object gets the same ambient value; like
+    UniformTempSpec, vertex_group_weights is unused. """
     return np.full(inputs.vertex_count, spec.value_k, dtype=np.float64)
 
 

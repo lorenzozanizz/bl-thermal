@@ -4,6 +4,7 @@ from .properties import (
     scene_properties,
     SceneIgnoreRules,
     UniformTempProperties,
+    AmbientTempProperties,
     WeightPaintedTempProperties,
     InitStrategyProperties,
     ThermalProperties,
@@ -18,6 +19,7 @@ properties = data_properties + scene_properties
 classes = (
     SceneIgnoreRules,
     UniformTempProperties,
+    AmbientTempProperties,
     WeightPaintedTempProperties,
     InitStrategyProperties,
     ThermalProperties,

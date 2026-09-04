@@ -82,6 +82,22 @@ class WeightPaintedTempSpec(TempInitSpec):
         """ This strategy requires weights. """
         return self.vertex_group
 
+
+@dataclass(frozen=True)
+class AmbientTempSpec(TempInitSpec):
+    """ Every point on every object in the scene starts at the same,
+    single ambient temperature (e.g. the surrounding air). """
+    value_k: float
+
+    @property
+    def init_type(self) -> InitType:
+        return InitType.AMBIENT
+
+    def validate(self) -> None:
+        if not Conversions.is_physically_valid_kelvin(self.value_k):
+            raise ValueError(f"AmbientTempSpec.value_k ({self.value_k}K) is below absolute zero")
+
+
 @dataclass
 class ThermalProfile:
     """ Holds a complete profile: how an object's temperature is initialized,
