@@ -19,10 +19,6 @@ from .nodes import TreeUtils, MathCompositor
 from .terminal import build_terminal
 from .transfer import TransferNodeRegistry
 
-_ATTRIBUTE_LOCATION = (-1400.0, 0.0)
-_BODY_LOCATION = (-1200.0, 0.0)
-
-
 class ShaderDescriptor(ABC):
     """ Builds one complete material for a ShadingType. """
     shading_type: ShadingType
@@ -74,6 +70,13 @@ def _prepare_tree(material: Material) -> ShaderNodeTree:
     return tree
 
 
+
+# Locations in the node editor where the builder will put the
+# different sections of the shading tree.
+_ATTRIBUTE_LOCATION = (-1400.0, 0.0)
+_BODY_LOCATION = (-1200.0, 0.0)
+
+
 @ShaderRegistry.register(ShadingType.TEMPERATURE_SHADER)
 class TemperatureShader(ShaderDescriptor):
     """ Emits the baked temperature field with no radiometry.
@@ -97,12 +100,12 @@ class TemperatureShader(ShaderDescriptor):
         )
 
 
-@ShaderRegistry.register(ShadingType.NODE_SHADER)
+@ShaderRegistry.register(ShadingType.NODE_SURROGATE_REFLECTION)
 class NodeShader(ShaderDescriptor):
     """ Radiometric transfer plus emissivity mix, evaluated as Cycles/EEVEE
     math nodes. No light transport: the environment enters as a constant.
     """
-    shading_type = ShadingType.NODE_SHADER
+    shading_type = ShadingType.NODE_SURROGATE_REFLECTION
 
     @staticmethod
     def build(material: Material, settings: PropertyGroup) -> None:

@@ -76,15 +76,20 @@ class ShadingType(Enum):
     # Same, but use OSL (can only work on GPU for OptiX
     RAY_OSL_SHADER = "Ray OSL Shader"
 
-    # Use nodes to perform a scalar mapping, no ray tracing
-    NODE_SHADER = "Node Shader"
-    # Try to attempt a numpy per-pixel emittance computation
-    NUMPY_SHADER = "NumPy Shader"
-
     # Custom implementation of ray shaders, potentially very slow.
     MANUAL_RAY = "Custom Ray"
 
+    # Use nodes to perform a scalar mapping, factoring a surrogate reflected ambient temperature
+    # with a global emissivity value.
+    NODE_SURROGATE_REFLECTION = "Node Surrogate Reflection"
+
+    # Use nodes to perform a scalar mapping
+    NODE_PURE_EMITTANCE = "Node Pure Emittance"
+
+    # Try to attempt a numpy per-pixel emittance computation
+    NUMPY_SHADER = "NumPy Pure Emittance"
     # Just emit a temperature map for the scene
+
     TEMPERATURE_SHADER = "Temperature Shader"
 
     def uses_transfer(self) -> bool:
@@ -101,15 +106,6 @@ class TerminalMode(Enum):
     # Signal normalized and run through a palette. Used only for
     # viewport visualization of the baked temperature / emission map
     FALSE_COLOR = "False Color"
-
-
-class ThermographyType(Enum):
-    """
-
-    """
-    TEMPERATURE = "Temperature"
-    RADIANCE = "Radiance"
-    RAYTRACE = "Raytrace"
 
 
 class TransferType(Enum):
@@ -134,6 +130,14 @@ class TransferType(Enum):
     # Planck's law multiplied by the sensor's spectral response and
     # integrated across the band, precomputed into a lookup table.
     PLANCK_LUT = "Band-integrated Planck"
+
+    # from reference \cite{waldermar_et_dudzik}
+    #
+    WIEN = "Wien"
+
+    # from reference \cite{waldermar_et_dudzik}
+    #
+    RAYLEIGH_JEANS = "Rayleigh-Jeans"
 
     # M = eps*sigma*T^4. Total radiated power across all wavelengths, from
     # reference \cite{waldermar_et_dudzik}

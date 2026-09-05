@@ -201,7 +201,7 @@ class ThermalRenderSettings(PropertyGroup):
         name="Shading",
         description="How the thermal signal is evaluated and turned into an image",
         items=[(m.name, m.value, "") for m in ShadingType],
-        default=ShadingType.NODE_SHADER.name,
+        default=ShadingType.NODE_SURROGATE_REFLECTION.name,
     )
     transfer_type: EnumProperty(                                        # type: ignore
         name="Transfer",

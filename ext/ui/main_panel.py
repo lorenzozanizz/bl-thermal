@@ -370,5 +370,11 @@ class InfoPanel(Panel):
         op = row.operator(Labels.OPEN_URL.value, text="Documentation", icon='FILE_FOLDER')
         op.url = DOCU_URL
 
-class PropagatePanel(Panel):
+class SmoothSection(UISection):
+    pass
+
+class PropagateSection(UISection):
+    pass
+
+class TempEditorPanel(Panel):
     pass
