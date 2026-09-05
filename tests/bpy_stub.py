@@ -79,7 +79,7 @@ if "bpy" not in sys.modules:
 
     for name in ("PointerProperty", "StringProperty", "BoolProperty",
                  "IntProperty", "FloatProperty", "EnumProperty",
-                 "CollectionProperty"):
+                 "CollectionProperty", "FloatVectorProperty"):
         setattr(bpy_props, name, _nop_property)
 
     blf.size = lambda *args, **kwargs: None

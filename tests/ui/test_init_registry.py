@@ -14,10 +14,6 @@ def test_get_strategy_inherit_raises_value_error():
         InitStrategyRegistry.get_strategy(InitType.INHERIT)
 
 
-def test_get_strategy_unimplemented_raises_not_implemented():
-    with pytest.raises(NotImplementedError):
-        InitStrategyRegistry.get_strategy(InitType.GRADIENT)
-
 
 def test_strategies_for_scope_excludes_weight_painted_at_collection():
     obj_types = {d.init_type for d in InitStrategyRegistry.strategies_for_scope(SpecScope.OBJECT)}
