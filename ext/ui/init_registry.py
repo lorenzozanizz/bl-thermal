@@ -7,12 +7,14 @@ how to draw its parameters.
 from typing import Type
 from abc import ABC, abstractmethod
 
+import bpy
 from bpy.types import PropertyGroup, UILayout, Object
 
-from ..thermal_core.contracts import InitType, SpecScope
+from ..thermal_core.contracts import InitType, SpecScope, EnvironmentSpecType
 from ..thermal_core.specs import TempInitSpec, AmbientTempSpec, UniformTempSpec, WeightPaintedTempSpec
 from ..thermal_core.temperature import TempUnit, Conversions
 from .properties import AmbientTempProperties, UniformTempProperties, WeightPaintedTempProperties
+from .environment_registry import EnvironmentFactorRegistry
 
 
 class StrategyDescriptor(ABC):
@@ -118,8 +120,26 @@ class InitAmbient(StrategyDescriptor):
 
     @staticmethod
     def build(props: AmbientTempProperties) -> AmbientTempSpec:
-        unit = TempUnit[props.unit]
-        return AmbientTempSpec(value_k=Conversions.to_kelvin(props.value, unit))
+        return AmbientTempSpec(value_k=InitAmbient._resolve_scene_ambient_temperature())
+
+    @staticmethod
+    def _resolve_scene_ambient_temperature() -> float:
+        """ AMBIENT reads its value from the scene's environmental-factor
+        stack (Scene Properties > Thermal Environment) rather than from its
+        own props, so every object/collection resolving to AMBIENT shares
+        one single source of truth instead of each carrying its own copy.
+        """
+        for item in bpy.context.scene.thermal_environment.factors:
+            if EnvironmentSpecType[item.factor_type] is not EnvironmentSpecType.AMBIENT_TEMPERATURE:
+                continue
+            descriptor = EnvironmentFactorRegistry.get(EnvironmentSpecType.AMBIENT_TEMPERATURE)
+            sub_props = getattr(item, descriptor.attr_name)
+            return descriptor.build(sub_props).value_k
+
+        raise ValueError(
+            "InitType.AMBIENT requires an 'Ambient Temperature' entry in "
+            "Scene Properties > Thermal Environment."
+        )
 
 
 @InitStrategyRegistry.register(init_type=InitType.WEIGHT_PAINTED)

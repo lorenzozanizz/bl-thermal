@@ -11,11 +11,12 @@ from bpy.types import Panel, Context, ID, Object, Collection
 from ..operators.names import Labels
 from ..constants import *
 from ..thermal_core.contracts import (
-    InitType, SpecScope, ShadingType, TransferType, TerminalMode,
+    InitType, SpecScope, ShadingType, TransferType, TerminalMode, EnvironmentSpecType,
 )
 from ..shaders.registry import ShaderRegistry
 from ..shaders.transfer import TransferNodeRegistry
 from .init_registry import InitStrategyRegistry
+from .environment_registry import EnvironmentFactorRegistry
 from .text_wrap_utils import WrapWidget
 from .resolution import SpecsResolver, SpecResolutionError
 from .color_bar_gpu import left_bottom_color_bar
@@ -110,6 +111,40 @@ class SpecSection(UISection):
 
         sub_props = getattr(strategy_props, descriptor.attr_name)
         descriptor.draw(layout, sub_props)
+
+
+class EnvironmentSection(UISection):
+    """ Draws the scene's environmental-factor stack: one box per active
+    entry (its type, parameters or a "not implemented yet" notice, and a
+    remove button), plus the add-dropdown at the bottom.
+
+    """
+
+    def draw(self, context: Context, layout) -> None:
+        settings = context.scene.thermal_environment
+
+        for index, item in enumerate(settings.factors):
+            factor_type = EnvironmentSpecType[item.factor_type]
+
+            box = layout.box()
+            header = box.row()
+            header.label(text=factor_type.value)
+            remove = header.operator(Labels.ENVIRONMENT_FACTOR_REMOVE.value, text="", icon='X')
+            remove.index = index
+
+            try:
+                descriptor = EnvironmentFactorRegistry.get(factor_type)
+            except NotImplementedError:
+                box.label(text=f'"{factor_type.value}" is not implemented yet', icon='ERROR')
+                continue
+
+            sub_props = getattr(item, descriptor.attr_name)
+            descriptor.draw(box, sub_props)
+
+        layout.operator_menu_enum(
+            Labels.ENVIRONMENT_FACTOR_ADD.value, "factor_type",
+            text="Add Environmental Factor", icon='ADD',
+        )
 
 
 class ShadingSection(UISection):
@@ -336,6 +371,24 @@ class CollectionSpecPanel(Panel):
         panel.draw(context, self.layout)
 
 
+class EnvironmentPanel(Panel):
+    """ Properties Editor tab (shown when a Scene is the active outliner ID)
+    for configuring scene-wide environmental conditions (e.g. ambient
+    temperature) used for convective/radiative exchange with the scene.
+    """
+    bl_idname = "THERMAL_PT_environment"
+    bl_label = "Thermal Environment"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "scene"
+
+    def draw(self, context: Context) -> None:
+        panel = CentralPanel(sections=[
+            EnvironmentSection(),
+        ])
+        panel.draw(context, self.layout)
+
+
 class InfoPanel(Panel):
 
     bl_idname = "THERMAL_PT_info"
@@ -370,11 +423,5 @@ class InfoPanel(Panel):
         op = row.operator(Labels.OPEN_URL.value, text="Documentation", icon='FILE_FOLDER')
         op.url = DOCU_URL
 
-class SmoothSection(UISection):
-    pass
-
-class PropagateSection(UISection):
-    pass
-
-class TempEditorPanel(Panel):
+class PropagatePanel(Panel):
     pass

@@ -1,11 +1,14 @@
 from .baking import BakeTemperatureOperator
-from .visualization import (VisualizeShaderOperator, FitDisplaySpanOperator,
+from .visualization import (VisualizeTemperatureOperator, FitDisplaySpanOperator,
                             ShowColorBarOperator, HideColorBarOperator)
+from .environment import AddEnvironmentFactorOperator, RemoveEnvironmentFactorOperator
 
 classes = (
     BakeTemperatureOperator,
-    VisualizeShaderOperator,
+    VisualizeTemperatureOperator,
     FitDisplaySpanOperator,
     HideColorBarOperator,
     ShowColorBarOperator,
+    AddEnvironmentFactorOperator,
+    RemoveEnvironmentFactorOperator,
 )

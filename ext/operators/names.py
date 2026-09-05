@@ -47,3 +47,9 @@ class Labels(Enum):
     # ( Hide the left-bottom color bar )
     HIDE_COLOR_BAR           = "thermal.hide_color_bar"
 
+    # ------------- Names inside "thermal" (environment family) ---------------
+    # |
+    # ( Appends a new entry to the scene's environmental-factor stack )
+    ENVIRONMENT_FACTOR_ADD    = "thermal.environment_factor_add"
+    # ( Removes an entry from the scene's environmental-factor stack )
+    ENVIRONMENT_FACTOR_REMOVE = "thermal.environment_factor_remove"
