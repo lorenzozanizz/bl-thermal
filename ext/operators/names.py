@@ -53,3 +53,10 @@ class Labels(Enum):
     ENVIRONMENT_FACTOR_ADD    = "thermal.environment_factor_add"
     # ( Removes an entry from the scene's environmental-factor stack )
     ENVIRONMENT_FACTOR_REMOVE = "thermal.environment_factor_remove"
+
+    # ------------- Names inside "thermal" (gradient editing family) ---------------
+    # |
+    # ( Copies the 3D cursor's world position into a Gradient point field )
+    GRADIENT_POINT_FROM_CURSOR = "thermal.gradient_point_from_cursor"
+    # ( Toggles the 3D-viewport overlay showing the gradient's two points and axis )
+    VISUALIZE_GRADIENT_POINTS  = "thermal.visualize_gradient_points"

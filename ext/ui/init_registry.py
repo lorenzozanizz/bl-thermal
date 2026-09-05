@@ -15,6 +15,7 @@ from ..thermal_core.specs import (
     TempInitSpec, AmbientTempSpec, GradientTempSpec, UniformTempSpec, WeightPaintedTempSpec,
 )
 from ..thermal_core.temperature import TempUnit, Conversions
+from ..operators.names import Labels
 from .properties import (
     AmbientTempProperties, GradientTempProperties, UniformTempProperties, WeightPaintedTempProperties,
 )
@@ -159,11 +160,31 @@ class InitGradient(StrategyDescriptor):
 
     @staticmethod
     def draw(layout: UILayout, props: GradientTempProperties) -> None:
-        layout.prop(props, "point_a")
+        target = props.id_data
+        target_type = 'OBJECT' if isinstance(target, Object) else 'COLLECTION'
+
+        row_a = layout.row(align=True)
+        row_a.prop(props, "point_a")
+        op = row_a.operator(
+            Labels.GRADIENT_POINT_FROM_CURSOR.value, text="", icon='CURSOR',
+        )
+        op.target_type, op.target_name, op.point = target_type, target.name, 'A'
         layout.prop(props, "value_a")
-        layout.prop(props, "point_b")
+
+        row_b = layout.row(align=True)
+        row_b.prop(props, "point_b")
+        op = row_b.operator(
+            Labels.GRADIENT_POINT_FROM_CURSOR.value, text="", icon='CURSOR',
+        )
+        op.target_type, op.target_name, op.point = target_type, target.name, 'B'
         layout.prop(props, "value_b")
+
         layout.prop(props, "unit")
+
+        op = layout.operator(
+            Labels.VISUALIZE_GRADIENT_POINTS.value, icon='SHADING_WIRE',
+        )
+        op.target_type, op.target_name = target_type, target.name
 
     @staticmethod
     def build(props: GradientTempProperties) -> GradientTempSpec:

@@ -110,6 +110,14 @@ class GradientTempSpec(TempInitSpec):
                 "(degenerate gradient axis)"
             )
 
+    def hot_cold_points(self) -> Tuple[Tuple[float, float, float], Tuple[float, float, float]]:
+        """ Returns (hot_point, cold_point) by comparing value_a_k/value_b_k.
+
+        """
+        if self.value_a_k >= self.value_b_k:
+            return self.point_a, self.point_b
+        return self.point_b, self.point_a
+
 
 @dataclass(frozen=True)
 class AmbientTempSpec(TempInitSpec):

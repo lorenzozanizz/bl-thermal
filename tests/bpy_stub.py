@@ -106,5 +106,14 @@ if "bpy" not in sys.modules:
     sys.modules["gpu"] = gpu
     sys.modules["blf"] = blf
 
+
+    class Vector:
+        pass
+
+    mathutils = types.ModuleType("mathutils")
+    mathutils.Vector = Vector
+    sys.modules["mathutils"] = mathutils
+
 def foo():
     pass
+
