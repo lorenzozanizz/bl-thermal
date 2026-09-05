@@ -17,7 +17,7 @@ near-duplicate PropertyGroup classes.
 
 from bpy.types import PropertyGroup, NodeTree, Object, Collection, Scene
 from bpy.props import (
-    PointerProperty, StringProperty, FloatProperty, EnumProperty,
+    PointerProperty, StringProperty, FloatProperty, FloatVectorProperty, EnumProperty,
     CollectionProperty, IntProperty,
 )
 
@@ -58,6 +58,41 @@ class AmbientTempProperties(PropertyGroup):
     """
     pass
 
+
+
+class GradientTempProperties(PropertyGroup):
+    """ UI state for ObjectTempInitType.GRADIENT: temperature varies linearly
+    between two points in world space, `point_a` -> value_a, `point_b` -> value_b.
+    """
+    point_a: FloatVectorProperty(                                                  # type: ignore
+        name="Point A",
+        description="World-space point pinned to Value A",
+        subtype='XYZ',
+        size=3,
+    )
+    point_b: FloatVectorProperty(                                                  # type: ignore
+        name="Point B",
+        description="World-space point pinned to Value B",
+        subtype='XYZ',
+        size=3,
+        default=(1.0, 0.0, 0.0),
+    )
+    value_a: FloatProperty(                                                        # type: ignore
+        name="Value A",
+        description="Temperature at Point A",
+        default=293.15,
+    )
+    value_b: FloatProperty(                                                        # type: ignore
+        name="Value B",
+        description="Temperature at Point B",
+        default=310.15,
+    )
+    unit: EnumProperty(                                                            # type: ignore
+        name="Unit",
+        description="Display unit for the Value A/B temperatures above",
+        items=[(u.name, u.value, "") for u in TempUnit],
+        default=TempUnit.CELSIUS.name,
+    )
 
 
 class WeightPaintedTempProperties(PropertyGroup):
@@ -165,6 +200,7 @@ class InitStrategyProperties(PropertyGroup):
     )
     uniform: PointerProperty(type=UniformTempProperties)                        # type: ignore
     ambient: PointerProperty(type=AmbientTempProperties)                        # type: ignore
+    gradient: PointerProperty(type=GradientTempProperties)                      # type: ignore
     weight_painted: PointerProperty(type=WeightPaintedTempProperties)           # type: ignore
 
 

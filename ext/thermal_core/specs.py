@@ -6,7 +6,7 @@ temperature field is specified.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Tuple
 
 from .temperature import Conversions
 from .contracts import InitType, EnvironmentSpecType
@@ -81,6 +81,34 @@ class WeightPaintedTempSpec(TempInitSpec):
     def get_vertex_group(self) -> str:
         """ This strategy requires weights. """
         return self.vertex_group
+
+
+@dataclass(frozen=True)
+class GradientTempSpec(TempInitSpec):
+    """ Temperature varies linearly along the axis connecting two points in
+    world space: `point_a` is pinned to `value_a_k`, `point_b` to `value_b_k`,
+    and everything in between is linearly interpolated by projecting each
+    vertex onto the (point_a -> point_b) axis. Vertices projecting outside
+    the segment are clamped to the nearest endpoint's value.
+    """
+    point_a: Tuple[float, float, float]
+    point_b: Tuple[float, float, float]
+    value_a_k: float
+    value_b_k: float
+
+    @property
+    def init_type(self) -> InitType:
+        return InitType.GRADIENT
+
+    def validate(self) -> None:
+        if (not Conversions.is_physically_valid_kelvin(self.value_a_k) or
+                not Conversions.is_physically_valid_kelvin(self.value_b_k)):
+            raise ValueError("GradientTempSpec has a value below absolute zero")
+        if self.point_a == self.point_b:
+            raise ValueError(
+                "GradientTempSpec.point_a and point_b must not coincide "
+                "(degenerate gradient axis)"
+            )
 
 
 @dataclass(frozen=True)

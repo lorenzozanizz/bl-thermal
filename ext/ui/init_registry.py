@@ -11,9 +11,13 @@ import bpy
 from bpy.types import PropertyGroup, UILayout, Object
 
 from ..thermal_core.contracts import InitType, SpecScope, EnvironmentSpecType
-from ..thermal_core.specs import TempInitSpec, AmbientTempSpec, UniformTempSpec, WeightPaintedTempSpec
+from ..thermal_core.specs import (
+    TempInitSpec, AmbientTempSpec, GradientTempSpec, UniformTempSpec, WeightPaintedTempSpec,
+)
 from ..thermal_core.temperature import TempUnit, Conversions
-from .properties import AmbientTempProperties, UniformTempProperties, WeightPaintedTempProperties
+from .properties import (
+    AmbientTempProperties, GradientTempProperties, UniformTempProperties, WeightPaintedTempProperties,
+)
 from .environment_registry import EnvironmentFactorRegistry
 
 
@@ -139,6 +143,36 @@ class InitAmbient(StrategyDescriptor):
         raise ValueError(
             "InitType.AMBIENT requires an 'Ambient Temperature' entry in "
             "Scene Properties > Thermal Environment."
+        )
+
+
+@InitStrategyRegistry.register(init_type=InitType.GRADIENT)
+class InitGradient(StrategyDescriptor):
+    """ Linear temperature gradient between two world-space points. Valid at
+    both Object and Collection scope (see InitType.allowed_for_scope) - the
+    two points are absolute world coordinates, so a Collection-level default
+    applies the same axis to every member object. """
+
+    init_type = InitType.GRADIENT
+    property_group = GradientTempProperties
+    attr_name = "gradient"
+
+    @staticmethod
+    def draw(layout: UILayout, props: GradientTempProperties) -> None:
+        layout.prop(props, "point_a")
+        layout.prop(props, "value_a")
+        layout.prop(props, "point_b")
+        layout.prop(props, "value_b")
+        layout.prop(props, "unit")
+
+    @staticmethod
+    def build(props: GradientTempProperties) -> GradientTempSpec:
+        unit = TempUnit[props.unit]
+        return GradientTempSpec(
+            point_a=tuple(props.point_a),
+            point_b=tuple(props.point_b),
+            value_a_k=Conversions.to_kelvin(props.value_a, unit),
+            value_b_k=Conversions.to_kelvin(props.value_b, unit),
         )
 
 

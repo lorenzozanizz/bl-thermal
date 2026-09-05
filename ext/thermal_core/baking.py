@@ -15,7 +15,9 @@ from typing import Callable, Dict, Type
 import numpy as np
 
 from .field import MeshSample
-from .specs import AmbientTempSpec, TempInitSpec, UniformTempSpec, WeightPaintedTempSpec
+from .specs import (
+    AmbientTempSpec, GradientTempSpec, TempInitSpec, UniformTempSpec, WeightPaintedTempSpec,
+)
 
 
 # Typing hint
@@ -28,9 +30,8 @@ class BakeStrategyRegistry:
     """ Maps a TempInitSpec subclass to the pure function that evaluates it
     into a per-vertex float64 Kelvin array.
 
-    Adding a new strategy's numeric side means: (1) a dataclass in specs.py
-    (already done for GRADIENT/AMBIENT at the InitType level, once their
-    TempInitSpec subclasses exist), (2) one @register(SpecType) function
+    Adding a new strategy's numeric side means: (1) a dataclass in specs.py,
+    (2) one @register(SpecType) function
     here. Callers never branch on spec type directly - always through
     evaluate().
     """
@@ -110,6 +111,26 @@ def _evaluate_ambient(spec: AmbientTempSpec, sample: MeshSample) -> np.ndarray:
     """ Every vertex on every object gets the same ambient value; like
     UniformTempSpec, no geometry is consulted. """
     return np.full(sample.vertex_count, spec.value_k, dtype=np.float64)
+
+
+@BakeStrategyRegistry.register(GradientTempSpec)
+def _evaluate_gradient(spec: GradientTempSpec, sample: MeshSample) -> np.ndarray:
+    """ Projects each vertex onto the (point_a -> point_b) axis and linearly
+    interpolates value_a_k -> value_b_k along it. Vertices projecting outside
+    the segment are clamped to the nearest endpoint's value.
+
+    :raises ValueError: point_a and point_b coincide (degenerate axis).
+    """
+    point_a = np.asarray(spec.point_a, dtype=np.float64)
+    axis = np.asarray(spec.point_b, dtype=np.float64) - point_a
+    axis_length_sq = float(np.dot(axis, axis))
+    if axis_length_sq == 0.0:
+        raise ValueError("GradientTempSpec has a degenerate axis (point_a == point_b)")
+
+    # t=0 at point_a, t=1 at point_b; clamped so vertices beyond either
+    # endpoint hold that endpoint's value instead of extrapolating.
+    t = np.clip((sample.positions - point_a) @ axis / axis_length_sq, 0.0, 1.0)
+    return spec.value_a_k + t * (spec.value_b_k - spec.value_a_k)
 
 
 @BakeStrategyRegistry.register(WeightPaintedTempSpec)
