@@ -18,7 +18,7 @@ from ..shaders.transfer import TransferNodeRegistry
 from .init_registry import InitStrategyRegistry
 from .environment_registry import EnvironmentFactorRegistry
 from .text_wrap_utils import WrapWidget
-from .resolution import SpecsResolver, SpecResolutionError
+from .resolution import ConfigBuilder
 from .color_bar_gpu import left_bottom_color_bar
 
 
@@ -41,19 +41,23 @@ class BakeSection(UISection):
 
     @staticmethod
     def _count_ready(context: Context) -> tuple[int, int]:
+        """ How many mesh objects would produce a field, out of how many exist.
+
+        Counts through ConfigBuilder rather than resolving each object here, so
+        the panel and the bake can never disagree about what is ready.
+        """
+        total_mesh = len(ConfigBuilder.mesh_objects(context.scene))
+        config, _unresolved = ConfigBuilder.from_scene(context.scene)
+
         ready = 0
-        total_mesh = 0
-        for obj in context.scene.objects:
-            if obj.type != 'MESH':
-                continue
-            total_mesh += 1
+        for spec in config.sources.values():
             try:
-                spec = SpecsResolver.resolve_object_spec(obj)
                 spec.validate()
-            except (SpecResolutionError, NotImplementedError, ValueError):
+            except ValueError:
                 continue
             ready += 1
         return ready, total_mesh
+
 
     def draw(self, context: Context, layout) -> None:
         ready, total_mesh = self._count_ready(context)

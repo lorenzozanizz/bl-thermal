@@ -23,11 +23,13 @@ later is a one-function insertion (`_resolve_via_scene`) right before that
 raise, once Scene support is designed.
 """
 
-from typing import List, Tuple
+from typing import Dict, Iterable, List, Tuple
 
 from bpy.types import Object, Collection
 
+from ..thermal_core.config import SceneThermalConfig
 from ..thermal_core.contracts import InitType, SpecScope
+from ..thermal_core.field import ObjectKey
 from ..thermal_core.specs import TempInitSpec
 from .init_registry import InitStrategyRegistry
 
@@ -140,3 +142,57 @@ class SpecsResolver:
 
         return first_spec
 
+
+
+class ConfigBuilder:
+    """ Builds a full scene SceneThermalConfig from the current bpy state.
+
+    When this is created, bpy is not required anymore, allowing for decoupling of backend
+    and BPY. This also allows a hook (TBI) substitute its own config without any of the pipeline
+    noticing.
+    """
+
+    @staticmethod
+    def object_key(obj: Object) -> ObjectKey:
+        """ The FieldSet key for an object. """
+        # Currently, the key is just its name, avoid using UUIDS which pollute the scene.
+        return obj.name
+
+    @staticmethod
+    def mesh_objects(scene) -> Tuple[Object, ...]:
+        """ Every object in the scene a temperature field can be baked onto. """
+        # NOTE: This only selects objects which are of type MESH. this does not
+        # take into considerations for example bezier curves or meshless planes.
+        # This can cause unexpected behaviour and a user should be made aware
+        # of this, TODO for docs
+        return tuple(obj for obj in scene.objects if obj.type == 'MESH')
+
+    @staticmethod
+    def from_objects(
+        objects: Iterable[Object],
+    ) -> Tuple[SceneThermalConfig, Dict[ObjectKey, Exception]]:
+        """ Resolve each object's effective spec into a config.
+
+        Objects whose spec cannot be resolved are left out of the config and
+        recorded in the returned mapping, so the caller can report them
+        without the resolution failure aborting the whole scene.
+
+        :return: (config, object key -> the exception that excluded it)
+        """
+        # Basically, just iterate all objects and resolve for each its spec.
+        sources: Dict[ObjectKey, TempInitSpec] = {}
+        unresolved: Dict[ObjectKey, Exception] = {}
+
+        for obj in objects:
+            key = ConfigBuilder.object_key(obj)
+            try:
+                sources[key] = SpecsResolver.resolve_object_spec(obj)
+            except (SpecResolutionError, NotImplementedError) as error:
+                unresolved[key] = error
+
+        return SceneThermalConfig(sources=sources), unresolved
+
+    @staticmethod
+    def from_scene(scene) -> Tuple[SceneThermalConfig, Dict[ObjectKey, Exception]]:
+        """ from_objects over every mesh object in the scene. """
+        return ConfigBuilder.from_objects(ConfigBuilder.mesh_objects(scene))

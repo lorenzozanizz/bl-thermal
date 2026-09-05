@@ -5,8 +5,8 @@ temperature field is specified.
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from dataclasses import dataclass
+from typing import ClassVar, Dict, Optional, Type, Tuple, Union
 
 from .temperature import Conversions
 from .contracts import InitType, EnvironmentSpecType
@@ -21,6 +21,29 @@ class TempInitSpec(ABC):
     the time a TempInitSpec exists, inheritance has already been resolved to
     a concrete strategy).
     """
+
+    # Every concrete subclass, keyed by class name. Populated automatically on
+    # subclass definition and used by SceneThermalConfig to rebuild a spec from
+    # a serialized dict.
+    _SUBCLASSES: ClassVar[Dict[str, Type["TempInitSpec"]]] = {}
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        TempInitSpec._SUBCLASSES[cls.__name__] = cls
+
+    @staticmethod
+    def named(type_name: str) -> Type["TempInitSpec"]:
+        """ Look up a concrete spec class by its class name.
+
+        :raises KeyError: no spec class of that name is defined.
+        """
+        try:
+            return TempInitSpec._SUBCLASSES[type_name]
+        except KeyError:
+            raise KeyError(
+                f"{type_name!r} is not a known TempInitSpec subclass. "
+                f"Known: {sorted(TempInitSpec._SUBCLASSES)}"
+            ) from None
 
     @property
     @abstractmethod
