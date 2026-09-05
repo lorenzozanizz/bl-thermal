@@ -40,6 +40,15 @@ _ALL_INITIALIZATION_STRATEGIES = tuple(i_t for i_t in InitType)
 _OBJECT_ONLY_STRATS = frozenset({InitType.WEIGHT_PAINTED})
 
 
+class EnvironmentSpecType(Enum):
+    """ Scene-level environmental condition shown in the Scene Properties
+    dropdown
+
+    """
+    AMBIENT_TEMPERATURE = "Ambient Temperature"
+    HUMIDITY = "Humidity"
+
+
 class ObjectTempEvolution(Enum):
     """
 

@@ -18,10 +18,11 @@ near-duplicate PropertyGroup classes.
 from bpy.types import PropertyGroup, NodeTree, Object, Collection, Scene
 from bpy.props import (
     PointerProperty, StringProperty, FloatProperty, EnumProperty,
+    CollectionProperty, IntProperty,
 )
 
 from ..thermal_core.contracts import (
-    InitType, SpecScope, ShadingType, TransferType, TerminalMode,
+    InitType, SpecScope, ShadingType, TransferType, TerminalMode, EnvironmentSpecType,
 )
 from ..thermal_core.temperature import TempUnit, Conversions
 from ..shaders.properties import RBFOTransferProperties
@@ -102,6 +103,54 @@ class WeightPaintedTempProperties(PropertyGroup):
             ("EASE_IN_OUT", "Ease In/Out", "Smoothstep interpolation between min and max"),
         ],
         default="LINEAR",
+    )
+
+
+class EnvironmentAmbientTemperatureProperties(PropertyGroup):
+    """ UI state for EnvironmentSpecType.AMBIENT_TEMPERATURE: the air
+    temperature surrounding the whole scene, used for convective/radiative
+    exchange with the environment.
+
+    """
+    value: FloatProperty(                                               # type: ignore
+        name="Temperature",
+        description="Ambient air temperature surrounding the scene",
+        default=293.15,  # 20C in Kelvin, stored/exposed per `unit` below
+        soft_min=0.0,
+    )
+    unit: EnumProperty(                                                 # type: ignore
+        name="Unit",
+        description="Display unit for the temperature value above",
+        items=[(u.name, u.value, "") for u in TempUnit],
+        default=TempUnit.CELSIUS.name,
+    )
+
+
+class EnvironmentFactorItem(PropertyGroup):
+    """ One active entry in the scene's environmental-factor stack: which
+    factor it is, and its parameters.
+
+    """
+    factor_type: EnumProperty(                                                      # type: ignore
+        name="Factor",
+        description="Which environmental condition this entry configures",
+        items=[(f.name, f.value, "") for f in EnvironmentSpecType],
+        default=EnvironmentSpecType.AMBIENT_TEMPERATURE.name,
+    )
+    ambient_temperature: PointerProperty(type=EnvironmentAmbientTemperatureProperties)  # type: ignore
+
+
+class EnvironmentSettings(PropertyGroup):
+    """ Scene-level stack of active environmental factors (see
+    EnvironmentFactorItem above).
+
+    """
+    factors: CollectionProperty(type=EnvironmentFactorItem)                         # type: ignore
+    active_index: IntProperty(                                                      # type: ignore
+        name="Active Environmental Factor",
+        description="Index of the selected entry in the list above, used by "
+                    "the add/remove operators",
+        default=0,
     )
 
 
@@ -238,5 +287,8 @@ data_properties = (
 scene_properties = (
     PropertyRegistration(
         owner=Scene, name="thermal_render", value=PointerProperty(type=ThermalRenderSettings)
+    ),
+    PropertyRegistration(
+        owner=Scene, name="thermal_environment", value=PointerProperty(type=EnvironmentSettings)
     ),
 )

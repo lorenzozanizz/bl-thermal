@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from .temperature import Conversions
-from .contracts import InitType
+from .contracts import InitType, EnvironmentSpecType
 
 
 @dataclass(frozen=True)
@@ -96,6 +96,41 @@ class AmbientTempSpec(TempInitSpec):
     def validate(self) -> None:
         if not Conversions.is_physically_valid_kelvin(self.value_k):
             raise ValueError(f"AmbientTempSpec.value_k ({self.value_k}K) is below absolute zero")
+
+
+@dataclass(frozen=True)
+class EnvironmentFactorSpec(ABC):
+    """ Base class for a single scene-level environmental condition (see
+    EnvironmentSpecType)
+
+    """
+
+    @property
+    @abstractmethod
+    def factor_type(self) -> EnvironmentSpecType:
+        """ The EnvironmentSpecType this spec implements. """
+        raise NotImplementedError
+
+    def validate(self) -> None:
+        """ Raise ValueError if the spec's parameters are physically invalid.
+        Subclasses should extend this rather than overriding it outright.
+        """
+        pass
+
+
+@dataclass(frozen=True)
+class AmbientTemperatureSpec(EnvironmentFactorSpec):
+    """ Air temperature surrounding the scene, for convective/radiative
+    exchange with the environment. """
+    value_k: float
+
+    @property
+    def factor_type(self) -> EnvironmentSpecType:
+        return EnvironmentSpecType.AMBIENT_TEMPERATURE
+
+    def validate(self) -> None:
+        if not Conversions.is_physically_valid_kelvin(self.value_k):
+            raise ValueError(f"AmbientTemperatureSpec.value_k ({self.value_k}K) is below absolute zero")
 
 
 @dataclass
