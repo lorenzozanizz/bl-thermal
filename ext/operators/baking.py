@@ -2,6 +2,10 @@
 Bpy-facing orchestration for baking each mesh object's resolved
 temperature-initialization spec into a per-vertex float mesh attribute.
 
+This module is one half of the bpy boundary: it reads bpy state and turns it
+into the plain arrays thermal_core understands (MeshSample), then writes the
+resulting numbers back onto the mesh. Everything between those two points is
+bpy-free and separately testable.
 """
 
 from enum import Enum, auto
@@ -14,7 +18,8 @@ from .names import Labels
 from ..constants import (
     TEMPERATURE_ATTR_NAME, TEMPERATURE_ATTR_TYPE, TEMPERATURE_ATTR_DOMAIN,
 )
-from ..thermal_core.baking import BakeInputs, BakeStrategyRegistry
+from ..thermal_core.baking import BakeStrategyRegistry
+from ..thermal_core.field import MeshSample
 from ..ui.resolution import SpecsResolver, SpecResolutionError
 
 
@@ -29,6 +34,93 @@ class BakeOutcome(Enum):
     SKIPPED_INVALID_SPEC = auto()
     SKIPPED_MISSING_VERTEX_GROUP = auto()
     SKIPPED_NOT_IMPLEMENTED = auto()
+
+
+class MeshSampler:
+    """ Extracts a bpy Object's geometry into a bpy-free MeshSample.
+
+    Baking, diffusing and evolving all begin by sampling the scene the same way.
+    """
+
+    @staticmethod
+    def extract_vertex_group_weights(obj: Object, vertex_group_name: str) -> np.ndarray:
+        """ Reads vertex_group_name's per-vertex weight into an array aligned to
+        obj.data.vertices. Vertices that aren't members of the group get 0.0,
+        matching how weight-paint remapping treats "unpainted" as the bottom of
+        the range.
+
+        :raises KeyError: obj has no vertex group named vertex_group_name.
+        """
+        vertex_group = obj.vertex_groups[vertex_group_name]  # raises KeyError if absent
+        # the vertex group has to have been created beforehand
+        weights = np.zeros(len(obj.data.vertices), dtype=np.float64)
+        # TODO: Optimize this loop somehow.
+        for vertex in obj.data.vertices:
+            try:
+                weights[vertex.index] = vertex_group.weight(vertex.index)
+            except RuntimeError:
+                pass
+        return weights
+
+    @staticmethod
+    def extract_positions(obj: Object) -> np.ndarray:
+        """ Reads obj's vertex coordinates into an (N, 3) float64 array in
+        WORLD space.
+
+        Blender stores coordinates in object-local space, so the object's
+        world matrix is applied here. See the note in thermal_core/field.py:
+        operations that read two objects at once need a shared frame, and
+        converting here means each of them does not have to.
+        """
+        mesh = obj.data
+        vertex_count = len(mesh.vertices)
+
+        flat = np.empty(vertex_count * 3, dtype=np.float64)
+        mesh.vertices.foreach_get('co', flat)
+        local = flat.reshape(vertex_count, 3)
+
+        # matrix_world is a 4x4 row-major affine transform; world = R @ p + t.
+        matrix = np.array(obj.matrix_world, dtype=np.float64)
+        rotation_scale = matrix[:3, :3]
+        translation = matrix[:3, 3]
+        return local @ rotation_scale.T + translation
+
+    @staticmethod
+    def extract_edges(obj: Object) -> np.ndarray:
+        """ Reads obj's edges into an (E, 2) int32 array of vertex indices.
+
+        Undirected, each edge listed once, exactly as Blender stores it.
+        MeshSample.adjacency() is what turns this into a neighbour lookup.
+        """
+        mesh = obj.data
+        edge_count = len(mesh.edges)
+
+        flat = np.empty(edge_count * 2, dtype=np.int32)
+        mesh.edges.foreach_get('vertices', flat)
+        return flat.reshape(edge_count, 2)
+
+    @staticmethod
+    def sample(obj: Object, vertex_group_name: Optional[str] = None) -> MeshSample:
+        """ Build the complete MeshSample for one mesh object.
+
+        :param obj: a MESH object. Callers are expected to have filtered by
+            type already.
+        :param vertex_group_name: name of the vertex group whose weights the
+            resolved spec needs, or None when it needs none. Weights are only
+            read when asked for, since the loop is the expensive part of
+            sampling and most strategies never look at it.
+        :raises KeyError: vertex_group_name was given but obj has no such group.
+        """
+        weights = (
+            None if vertex_group_name is None
+            else MeshSampler.extract_vertex_group_weights(obj, vertex_group_name)
+        )
+        return MeshSample(
+            vertex_count=len(obj.data.vertices),
+            positions=MeshSampler.extract_positions(obj),
+            edges=MeshSampler.extract_edges(obj),
+            vertex_group_weights=weights,
+        )
 
 
 class BakeTemperatureOperator(Operator):
@@ -67,26 +159,6 @@ class BakeTemperatureOperator(Operator):
             return {'CANCELLED'}
 
     @staticmethod
-    def _extract_vertex_group_weights(obj: Object, vertex_group_name: str) -> np.ndarray:
-        """ Reads vertex_group_name's per-vertex weight into an array aligned to
-        obj.data.vertices. Vertices that aren't members of the group get 0.0,
-        matching how weight-paint remapping treats "unpainted" as the bottom of
-        the range.
-
-        :raises KeyError: obj has no vertex group named vertex_group_name.
-        """
-        vertex_group = obj.vertex_groups[vertex_group_name]  # raises KeyError if absent
-        # the vertex group has to have been created beforehand
-        weights = np.zeros(len(obj.data.vertices), dtype=np.float64)
-        # TODO: Optimize this loop somehow.
-        for vertex in obj.data.vertices:
-            try:
-                weights[vertex.index] = vertex_group.weight(vertex.index)
-            except RuntimeError:
-                pass
-        return weights
-
-    @staticmethod
     def write_mesh_attribute(obj: Object, values: np.ndarray) -> None:
         """ Writes values (aligned to obj.data.vertices) into the
         TEMPERATURE_ATTR_NAME point-domain float attribute on obj's mesh,
@@ -97,21 +169,26 @@ class BakeTemperatureOperator(Operator):
         mesh = obj.data
         attribute = mesh.attributes.get(TEMPERATURE_ATTR_NAME)
         if (attribute is not None and (
-            # Ensure that we get the write attribute, if there is a conflict immediately
-            # ensure the user is aware of that.
                 attribute.data_type != TEMPERATURE_ATTR_TYPE
                 or attribute.domain != TEMPERATURE_ATTR_DOMAIN)):
-            raise RuntimeError("The mesh attribute corresponding to the temperature field over the "
-                               "scene was already written. This could be due to a conflict of some sort.")
-            # mesh.attributes.remove(attribute)
-            # attribute = None
+            # This implements
+            raise RuntimeError(
+                f"{obj.name!r} already has an attribute named {TEMPERATURE_ATTR_NAME!r} of type "
+                f"{attribute.data_type!r} on the {attribute.domain!r} domain, but the temperature field needs "
+                f"{TEMPERATURE_ATTR_TYPE!r} on {TEMPERATURE_ATTR_DOMAIN!r}. "
+                f"Rename or remove the conflicting attribute."
+            )
         if attribute is None:
             attribute = mesh.attributes.new(
                 name=TEMPERATURE_ATTR_NAME,
                 type=TEMPERATURE_ATTR_TYPE,
                 domain=TEMPERATURE_ATTR_DOMAIN,
             )
-        attribute.data.foreach_set('value', values)
+        # foreach_set takes the fast path only when the array's dtype matches
+        # the attribute's storage. The core computes in float64 for accuracy
+        # during iterative operations; the narrowing happens here, once, at the
+        # point where the values stop being numbers and become mesh data.
+        attribute.data.foreach_set('value', np.ascontiguousarray(values, dtype=np.float32))
         mesh.update()
 
     @staticmethod
@@ -138,24 +215,15 @@ class BakeTemperatureOperator(Operator):
         except ValueError:
             return BakeOutcome.SKIPPED_INVALID_SPEC
 
-        vertex_group_weights: Optional[np.ndarray] = None
-        if spec.get_vertex_group() is not None:
-            try:
-                vertex_group_weights = BakeTemperatureOperator._extract_vertex_group_weights(
-                    obj, spec.get_vertex_group()
-                )
-            except KeyError:
-                return BakeOutcome.SKIPPED_MISSING_VERTEX_GROUP
-
         # Create a BPY-agnostic object so that we can decouple the backend to
         # test it separately
-        inputs = BakeInputs(
-            vertex_count=len(obj.data.vertices),
-            vertex_group_weights=vertex_group_weights,
-        )
+        try:
+            sample = MeshSampler.sample(obj, spec.get_vertex_group())
+        except KeyError:
+            return BakeOutcome.SKIPPED_MISSING_VERTEX_GROUP
 
         try:
-            values = BakeStrategyRegistry.evaluate(spec, inputs)
+            values = BakeStrategyRegistry.evaluate(spec, sample)
         except NotImplementedError:
             # A spec type with no BakeStrategyRegistry evaluator yet, we cant
             # do anything about it.

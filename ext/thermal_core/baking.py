@@ -10,32 +10,18 @@ Anything requiring bpy (vertex count, named vertex-group weights, ...) is extrac
 the caller into a BakeInputs before reaching this module.
 """
 
-from dataclasses import dataclass
-from typing import Callable, Dict, Optional, Type
+from typing import Callable, Dict, Type
 
 import numpy as np
 
+from .field import MeshSample
 from .specs import AmbientTempSpec, TempInitSpec, UniformTempSpec, WeightPaintedTempSpec
-
-
-@dataclass(frozen=True)
-class BakeInputs:
-    """ Raw numeric context a strategy's evaluate() may need, already
-    extracted from bpy state by the caller.
-
-    :param vertex_count: number of vertices on the mesh being baked.
-    :param vertex_group_weights: per-vertex weights (0-1), aligned by index
-        to the mesh's vertices. None if not applicable (e.g. for specs that
-        don't need it) or not yet extracted.
-    """
-    vertex_count: int
-    vertex_group_weights: Optional[np.ndarray] = None
 
 
 # Typing hint
 # A function which gets evaluated for a temperature initialization
 # specification and produces the correct mesh temperature field
-EvaluateFn = Callable[[TempInitSpec, BakeInputs], np.ndarray]
+EvaluateFn = Callable[[TempInitSpec, MeshSample], np.ndarray]
 
 
 class BakeStrategyRegistry:
@@ -59,13 +45,13 @@ class BakeStrategyRegistry:
         return decorator
 
     @classmethod
-    def evaluate(cls, spec: TempInitSpec, inputs: BakeInputs) -> np.ndarray:
-        """ Evaluate spec into a (inputs.vertex_count,) float64 array of
+    def evaluate(cls, spec: TempInitSpec, sample: MeshSample) -> np.ndarray:
+        """ Evaluate spec into a (sample.vertex_count,) float64 array of
         Kelvin values.
 
         :param spec: resolved, already-validated TempInitSpec (see
             ui/resolution.py:SpecsResolver.resolve_object_spec).
-        :param inputs: numeric context extracted from bpy by the caller.
+        :param sample: geometry extracted from bpy by the caller.
         :raises NotImplementedError: spec's type has no evaluator registered
             yet (e.g. a future GradientTempSpec/AmbientTempSpec).
         """
@@ -76,7 +62,14 @@ class BakeStrategyRegistry:
                 f"{type(spec).__name__!r} has no BakeStrategyRegistry "
                 f"evaluator registered yet."
             ) from None
-        return fn(spec, inputs)
+
+        values = fn(spec, sample)
+        if values.shape != (sample.vertex_count,):
+            raise ValueError(
+                f"The evaluator for {type(spec).__name__} returned an array of "
+                f"shape {values.shape}, expected ({sample.vertex_count},)"
+            )
+        return values
 
 
 # Type hint
@@ -107,41 +100,35 @@ class FalloffFunctions:
 
 
 @BakeStrategyRegistry.register(UniformTempSpec)
-def _evaluate_uniform(spec: UniformTempSpec, inputs: BakeInputs) -> np.ndarray:
-    """ Every vertex gets the same value and vertex_group_weights is unused. """
-    return np.full(inputs.vertex_count, spec.value_k, dtype=np.float64)
+def _evaluate_uniform(spec: UniformTempSpec, sample: MeshSample) -> np.ndarray:
+    """ Every vertex gets the same value; no geometry is consulted. """
+    return np.full(sample.vertex_count, spec.value_k, dtype=np.float64)
 
 
 @BakeStrategyRegistry.register(AmbientTempSpec)
-def _evaluate_ambient(spec: AmbientTempSpec, inputs: BakeInputs) -> np.ndarray:
+def _evaluate_ambient(spec: AmbientTempSpec, sample: MeshSample) -> np.ndarray:
     """ Every vertex on every object gets the same ambient value; like
-    UniformTempSpec, vertex_group_weights is unused. """
-    return np.full(inputs.vertex_count, spec.value_k, dtype=np.float64)
+    UniformTempSpec, no geometry is consulted. """
+    return np.full(sample.vertex_count, spec.value_k, dtype=np.float64)
 
 
 @BakeStrategyRegistry.register(WeightPaintedTempSpec)
-def _evaluate_weight_painted(spec: WeightPaintedTempSpec, inputs: BakeInputs) -> np.ndarray:
-    """ Remaps inputs.vertex_group_weights (0-1) onto [spec.min_k, spec.max_k]
+def _evaluate_weight_painted(spec: WeightPaintedTempSpec, sample: MeshSample) -> np.ndarray:
+    """ Remaps sample.vertex_group_weights (0-1) onto [spec.min_k, spec.max_k]
     through the specified falloff function spec.falloff.
 
-    :raises ValueError: vertex_group_weights is missing/wrong length
+    :raises ValueError: vertex_group_weights is missing
     """
-    weights = inputs.vertex_group_weights
+    weights = sample.vertex_group_weights
     if weights is None:
         raise ValueError(
-            "WeightPaintedTempSpec requires BakeInputs.vertex_group_weights, "
+            "WeightPaintedTempSpec requires MeshSample.vertex_group_weights, "
             "got None - the caller must extract the named vertex group's "
             "weights before calling evaluate()."
         )
 
-    # May already be a numpy array, just convert it to be sure
-    weights = np.asarray(weights, dtype=np.float64)
-    if weights.shape[0] != inputs.vertex_count:
-        raise ValueError(
-            f"vertex_group_weights length ({weights.shape[0]}) does not "
-            f"match vertex_count ({inputs.vertex_count})"
-        )
-
+    # MeshSample.validate() has already checked the length, so the only
+    # remaining job is the remap itself.
     clamped = np.clip(weights, 0.0, 1.0)
     t = FalloffFunctions.evaluate(clamped, spec.falloff)
     return spec.min_k + t * (spec.max_k - spec.min_k)
